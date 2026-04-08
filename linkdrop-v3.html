@@ -1,0 +1,1642 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LINKDROP v2 — AI Bookmark Manager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0a0a0c;--bg2:#111114;--bg3:#18181d;--bg4:#1f1f26;
+  --border:#2a2a35;--border2:#3a3a48;
+  --cyan:#00d4ff;--cyan-dim:#00d4ff18;--cyan-glow:#00d4ff44;
+  --violet:#7c3aed;--violet-dim:#7c3aed1a;--violet-glow:#7c3aed55;
+  --green:#00e57a;--green-dim:#00e57a1a;--red:#ff3d5a;--red-dim:#ff3d5a1a;
+  --amber:#f59e0b;--amber-dim:#f59e0b1a;
+  --text:#e8e8f0;--text2:#9090a8;--text3:#5a5a72;
+  --fn:'Syne',sans-serif;--fm:'JetBrains Mono',monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--fm);font-size:13px;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");pointer-events:none;z-index:9999;opacity:.5}
+
+/* ── LAYOUT ── */
+#app{display:flex;flex-direction:column;min-height:100vh;transition:margin-right .35s cubic-bezier(.4,0,.2,1)}
+#app.panel-open{margin-right:420px}
+
+/* ── STATUS BAR ── */
+#statusbar{position:sticky;top:0;z-index:100;background:#0a0a0cee;backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 20px;height:48px;display:flex;align-items:center;gap:14px}
+.logo{font-family:var(--fn);font-size:16px;font-weight:800;letter-spacing:-.5px;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.logo-dot{width:8px;height:8px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan);animation:pdot 2s ease-in-out infinite}
+@keyframes pdot{0%,100%{opacity:1;box-shadow:0 0 8px var(--cyan)}50%{opacity:.3;box-shadow:none}}
+.sdiv{width:1px;height:20px;background:var(--border)}
+.stat-txt{font-size:11px;color:var(--text3);letter-spacing:.4px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat-txt span{color:var(--text2)}
+.indicators{display:flex;gap:10px;align-items:center}
+.ind{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);white-space:nowrap}
+.ind-dot{width:6px;height:6px;border-radius:50%;background:var(--text3);transition:background .3s,box-shadow .3s;flex-shrink:0}
+.ind-dot.ok{background:var(--green);box-shadow:0 0 6px var(--green)}
+.ind-dot.err{background:var(--red);box-shadow:0 0 6px var(--red)}
+.ind-dot.loading{background:var(--amber);animation:bl .8s step-end infinite}
+@keyframes bl{50%{opacity:0}}
+.hdr-btn{background:none;border:1px solid var(--border);color:var(--text2);padding:5px 10px;border-radius:4px;cursor:pointer;font-family:var(--fm);font-size:11px;letter-spacing:.4px;transition:all .2s;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.hdr-btn:hover{border-color:var(--cyan);color:var(--cyan)}
+.hdr-btn svg{width:12px;height:12px;flex-shrink:0}
+.nsfw-badge{font-size:9px;font-weight:700;background:var(--red-dim);border:1px solid var(--red);color:var(--red);padding:2px 6px;border-radius:3px;letter-spacing:.8px;cursor:pointer;transition:all .2s}
+.nsfw-badge:hover{background:var(--red);color:#fff}
+
+/* ── QUEUE INDICATOR ── */
+#queue-bar{display:none;align-items:center;gap:8px;padding:6px 20px;background:var(--bg2);border-bottom:1px solid var(--border);font-size:11px;color:var(--text3)}
+#queue-bar.visible{display:flex}
+.queue-pill{background:var(--violet-dim);border:1px solid var(--violet);color:#c4b5fd;padding:2px 8px;border-radius:3px;font-size:10px;letter-spacing:.5px}
+.q-spinner{width:10px;height:10px;border:1.5px solid var(--border2);border-top-color:var(--violet);border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0}
+
+/* ── DROP ZONE ── */
+#dropzone{flex:1;position:relative;transition:background .3s}
+#dropzone.drag-over{background:linear-gradient(135deg,#00d4ff06,#7c3aed06)}
+#drop-border{position:fixed;inset:6px;border:1.5px dashed var(--cyan);border-radius:8px;opacity:0;pointer-events:none;z-index:55;transition:opacity .2s}
+#dropzone.drag-over ~ #drop-border,#drop-border.show{opacity:1}
+#dropzone.drag-over::after{content:'URL HIER ABLEGEN';position:fixed;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--fn);font-size:42px;font-weight:800;color:var(--cyan);opacity:.07;pointer-events:none;z-index:50}
+
+/* ── EMPTY STATE ── */
+#empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;pointer-events:none;transition:opacity .4s}
+#empty.hidden{opacity:0}
+.e-icon{width:60px;height:60px;border:1.5px solid var(--border2);border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--text3)}
+.e-title{font-family:var(--fn);font-size:26px;font-weight:800;letter-spacing:-1px;color:var(--text3)}
+.e-sub{font-size:12px;color:var(--text3);text-align:center;line-height:1.9}
+.e-sub kbd{background:var(--bg3);border:1px solid var(--border2);border-radius:3px;padding:1px 6px;font-family:var(--fm);font-size:11px;color:var(--text2)}
+.kbdrow{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.kbdi{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--text3);background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:7px 12px}
+
+/* ── CARDS ── */
+#cards-grid{padding:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:14px;align-items:start}
+
+/* ── CARD ── */
+.link-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;animation:cin .35s cubic-bezier(.16,1,.3,1) both;transition:border-color .2s,box-shadow .2s;position:relative}
+@keyframes cin{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:none}}
+.link-card:hover{border-color:var(--border2)}
+.link-card.saved{border-color:var(--green);box-shadow:0 0 18px var(--green-dim)}
+.link-card.hovered-q{border-color:var(--amber)!important;box-shadow:0 0 12px var(--amber-dim)!important}
+.card-head{padding:13px 14px 11px;display:flex;align-items:flex-start;gap:10px;border-bottom:1px solid var(--border)}
+.card-fav{width:18px;height:18px;border-radius:3px;flex-shrink:0;margin-top:2px;object-fit:contain}
+.card-info{flex:1;min-width:0}
+.card-ttl{font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-url{font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;letter-spacing:.3px}
+.card-badges{display:flex;gap:5px;align-items:center;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
+.badge{font-size:9px;font-weight:600;letter-spacing:.8px;padding:3px 7px;border-radius:3px;text-transform:uppercase;white-space:nowrap}
+.badge.analyzing{background:var(--violet-dim);color:#a78bfa;border:1px solid var(--violet)}
+.badge.ready{background:var(--cyan-dim);color:var(--cyan);border:1px solid var(--cyan)}
+.badge.saved-b{background:var(--green-dim);color:var(--green);border:1px solid var(--green)}
+.badge.err-b{background:var(--red-dim);color:var(--red);border:1px solid var(--red)}
+.badge.queued{background:var(--amber-dim);color:var(--amber);border:1px solid var(--amber)}
+.badge.cors-err{background:var(--red-dim);color:var(--red);border:1px solid var(--red)}
+.badge.lang{background:#1a1a2e;color:#818cf8;border:1px solid #3730a3;font-size:8px}
+.card-body{padding:12px 14px}
+.ai-summary{font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:12px;min-height:18px}
+.sec-lbl{font-size:9px;letter-spacing:1.4px;color:var(--text3);text-transform:uppercase;margin-bottom:7px;display:flex;align-items:center;gap:6px}
+.sec-lbl::before{content:'';width:14px;height:1px;background:var(--border2)}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}
+.chip{font-size:11px;padding:3px 9px;border-radius:4px;cursor:pointer;transition:all .15s;border:1px solid var(--border2);color:var(--text3);background:transparent;font-family:var(--fm);user-select:none;white-space:nowrap}
+.chip:hover{border-color:var(--text3);color:var(--text2)}
+.chip.sel.lc{background:var(--cyan-dim);border-color:var(--cyan);color:var(--cyan)}
+.chip.sel.tc{background:var(--violet-dim);border-color:var(--violet);color:#c4b5fd}
+.chip.ai-s::after{content:'✦';font-size:7px;margin-left:3px;opacity:.55;vertical-align:super}
+.chip.pre-s{outline:2px solid var(--cyan-glow)}
+.chip-x{background:none;border:none;color:inherit;cursor:pointer;font-size:12px;padding:0 0 0 3px;opacity:.5;transition:opacity .15s;line-height:1}
+.chip-x:hover{opacity:1}
+.tag-in{background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:3px 9px;font-size:11px;font-family:var(--fm);color:var(--text);outline:none;width:120px;transition:border-color .2s}
+.tag-in:focus{border-color:var(--violet)}
+.tag-in::placeholder{color:var(--text3)}
+.card-foot{padding:10px 14px;border-top:1px solid var(--border);display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.btn{font-family:var(--fm);font-size:11px;font-weight:500;padding:6px 12px;border-radius:4px;border:none;cursor:pointer;transition:all .15s;letter-spacing:.3px;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.btn-sv{background:var(--cyan);color:#000;font-weight:700}
+.btn-sv:hover:not(:disabled){background:#33deff;box-shadow:0 0 10px var(--cyan-glow)}
+.btn-sv:disabled{opacity:.35;cursor:not-allowed}
+.btn-disc{background:transparent;border:1px solid var(--border2);color:var(--text3)}
+.btn-disc:hover{border-color:var(--red);color:var(--red)}
+.btn-sva{background:var(--violet);color:#fff;font-weight:700}
+.btn-sva:hover{background:#8b5cf6;box-shadow:0 0 10px var(--violet-glow)}
+.btn-ext{background:transparent;border:1px solid var(--amber);color:var(--amber);font-size:10px;padding:4px 9px}
+.btn-ext:hover{background:var(--amber);color:#000}
+.btn-arch{background:transparent;border:1px solid var(--border2);color:var(--text3);font-size:10px}
+.btn-arch:hover{border-color:var(--cyan);color:var(--cyan)}
+.btn-nim-now{background:var(--violet-dim);border:1px solid var(--violet);color:#c4b5fd;font-size:10px;padding:4px 9px}
+.btn-nim-now:hover{background:var(--violet);color:#fff}
+.typing-dots{display:inline-flex;gap:4px;align-items:center}
+.typing-dots span{width:5px;height:5px;border-radius:50%;background:var(--violet);animation:td 1.2s ease-in-out infinite}
+.typing-dots span:nth-child(2){animation-delay:.2s}
+.typing-dots span:nth-child(3){animation-delay:.4s}
+@keyframes td{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-5px);opacity:1}}
+.spinner{width:13px;height:13px;border:1.5px solid var(--border2);border-top-color:var(--cyan);border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── SETTINGS PANEL ── */
+#panel{position:fixed;top:0;right:0;bottom:0;width:420px;background:var(--bg2);border-left:1px solid var(--border);z-index:200;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .35s cubic-bezier(.4,0,.2,1)}
+#panel.open{transform:translateX(0)}
+.p-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.p-title{font-family:var(--fn);font-size:14px;font-weight:700;letter-spacing:-.3px}
+.btn-cls{background:none;border:none;color:var(--text3);cursor:pointer;padding:4px;font-size:18px;line-height:1;transition:color .2s;border-radius:3px}
+.btn-cls:hover{color:var(--text)}
+
+/* Panel tabs */
+.p-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto}
+.p-tabs::-webkit-scrollbar{display:none}
+.p-tab{font-family:var(--fm);font-size:10px;letter-spacing:.6px;text-transform:uppercase;padding:9px 12px;border:none;background:none;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;flex-shrink:0}
+.p-tab:hover{color:var(--text2)}
+.p-tab.active{color:var(--cyan);border-bottom-color:var(--cyan)}
+.p-panes{flex:1;overflow-y:auto}
+.p-pane{display:none;padding:18px}
+.p-pane.active{display:block}
+
+/* Form elements */
+.fg{margin-bottom:16px}
+.fl{display:block;font-size:10px;letter-spacing:1.1px;text-transform:uppercase;color:var(--text3);margin-bottom:5px}
+.fi{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:8px 11px;font-family:var(--fm);font-size:12px;color:var(--text);outline:none;transition:border-color .2s}
+.fi:focus{border-color:var(--cyan)}
+.fi::placeholder{color:var(--text3)}
+.fi:disabled{opacity:.4;cursor:not-allowed}
+select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='%235a5a72' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;padding-right:28px}
+.radio-group{display:flex;flex-direction:column;gap:7px;margin-bottom:10px}
+.radio-opt{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text2);padding:6px 10px;border:1px solid var(--border);border-radius:5px;transition:all .15s}
+.radio-opt:hover{border-color:var(--border2)}
+.radio-opt input[type=radio]{accent-color:var(--cyan);cursor:pointer;flex-shrink:0}
+.radio-opt.checked{border-color:var(--cyan);background:var(--cyan-dim);color:var(--text)}
+.psec{font-family:var(--fn);font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--text3);margin-bottom:12px;margin-top:22px;padding-bottom:7px;border-bottom:1px solid var(--border)}
+.psec:first-child{margin-top:0}
+.preview-box{background:var(--bg3);border:1px dashed var(--border2);border-radius:4px;padding:7px 10px;font-size:10px;color:var(--text3);font-family:var(--fm);word-break:break-all;line-height:1.5}
+.preview-box span{color:var(--cyan)}
+.btn-t{background:transparent;border:1px solid var(--border2);color:var(--text2);padding:6px 12px;border-radius:4px;cursor:pointer;font-family:var(--fm);font-size:11px;transition:all .2s;width:100%;margin-top:6px;letter-spacing:.3px;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn-t:hover{border-color:var(--cyan);color:var(--cyan)}
+.btn-danger{border-color:var(--red-dim);color:var(--red)}
+.btn-danger:hover{border-color:var(--red);background:var(--red-dim)}
+.btn-add{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:5px 10px;border-radius:4px;cursor:pointer;font-family:var(--fm);font-size:11px;transition:all .2s;display:flex;align-items:center;gap:5px}
+.btn-add:hover{border-color:var(--cyan);color:var(--cyan)}
+.warn-txt{font-size:11px;color:var(--amber);background:var(--amber-dim);border:1px solid var(--amber);border-radius:4px;padding:7px 10px;line-height:1.6;margin-top:8px;display:none}
+.warn-txt.show{display:block}
+.info-txt{font-size:11px;color:var(--text3);line-height:1.7;margin-top:8px}
+.list-items{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+.list-item{display:flex;align-items:center;gap:7px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:5px 9px;font-size:11px;color:var(--text2)}
+.list-item span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.list-item button{background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:0 2px;transition:color .15s;line-height:1}
+.list-item button:hover{color:var(--red)}
+
+/* ── SAVE ALL / DISMISS BAR ── */
+#btm-bar{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:9px 14px;display:flex;align-items:center;gap:10px;z-index:150;transition:transform .3s cubic-bezier(.16,1,.3,1),opacity .3s;opacity:0;box-shadow:0 8px 32px #00000088;backdrop-filter:blur(12px)}
+#btm-bar.vis{transform:translateX(-50%) translateY(0);opacity:1}
+#disc-all{position:fixed;bottom:22px;left:22px;background:transparent;border:1px solid var(--border2);color:var(--text3);padding:7px 13px;border-radius:6px;cursor:pointer;font-family:var(--fm);font-size:11px;z-index:150;transition:all .2s;display:none;align-items:center;gap:5px}
+#disc-all:hover{border-color:var(--red);color:var(--red)}
+#disc-all.vis{display:flex}
+
+/* ── TOASTS ── */
+#toasts{position:fixed;top:56px;right:18px;z-index:9000;display:flex;flex-direction:column;gap:7px;pointer-events:none;max-width:320px}
+.toast{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:9px 14px;font-size:12px;color:var(--text2);animation:tin .3s cubic-bezier(.16,1,.3,1) both;display:flex;align-items:flex-start;gap:8px;line-height:1.5}
+.toast.s{border-left:3px solid var(--green)}.toast.e{border-left:3px solid var(--red)}.toast.i{border-left:3px solid var(--cyan)}.toast.w{border-left:3px solid var(--amber)}
+.toast.out{animation:tout .3s ease forwards}
+@keyframes tin{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:none}}
+@keyframes tout{to{opacity:0;transform:translateX(18px)}}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:#00000088;z-index:1000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:28px;max-width:420px;width:90%;animation:min .35s cubic-bezier(.16,1,.3,1)}
+@keyframes min{from{opacity:0;transform:scale(.94) translateY(16px)}to{opacity:1;transform:none}}
+.modal h2{font-family:var(--fn);font-size:20px;font-weight:800;letter-spacing:-.5px;margin-bottom:12px;color:var(--red)}
+.modal p{font-size:12px;color:var(--text2);line-height:1.8;margin-bottom:16px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end}
+
+/* new list input */
+.create-list-row{display:flex;gap:7px;margin-bottom:16px}
+.create-list-row .fi{flex:1;margin-bottom:0}
+
+/* scraper list */
+.scraper-item{display:flex;align-items:center;gap:7px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:5px 9px;margin-bottom:5px}
+.scraper-item input{flex:1;background:transparent;border:none;font-family:var(--fm);font-size:11px;color:var(--text2);outline:none}
+.scraper-item input::placeholder{color:var(--text3)}
+
+/* archive table */
+.arch-row{display:flex;gap:7px;align-items:center;margin-bottom:6px}
+.arch-row .fi{font-size:11px;padding:5px 9px}
+.arch-row .fi:first-child{width:120px;flex-shrink:0}
+
+/* scrollbar */
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+@media(max-width:600px){#cards-grid{grid-template-columns:1fr;padding:12px}#app.panel-open{margin-right:0}#panel{width:100%}.stat-txt{display:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="statusbar">
+    <div class="logo"><div class="logo-dot"></div>LINKDROP</div>
+    <div class="sdiv"></div>
+    <div class="stat-txt"><span id="s-lists">0</span> Listen · <span id="s-tags">0</span> Tags · <span id="s-saved">0</span> heute · <span id="s-q">0</span> in Queue</div>
+    <div class="indicators">
+      <div class="ind"><div class="ind-dot loading" id="d-la"></div><span>LinkAce</span></div>
+      <div class="ind"><div class="ind-dot" id="d-nim"></div><span>NIM</span></div>
+    </div>
+    <div id="nsfw-wrap" style="display:none">
+      <div class="nsfw-badge" onclick="toggleNSFW()" title="NSFW-Modus: Externe Dienste werden nicht automatisch abgefragt" id="nsfw-badge">👁 NSFW</div>
+    </div>
+    <button class="hdr-btn" onclick="openPanel('ai')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+      SETTINGS
+    </button>
+  </header>
+
+  <div id="queue-bar">
+    <div class="q-spinner"></div>
+    <span>NIM Queue: <b id="q-count">0</b> ausstehend</span>
+    <div class="queue-pill" id="q-current">–</div>
+    <span style="color:var(--text3);font-size:10px;margin-left:auto">Hover über Karte → pausiert · Klick auf Liste/Tag → vorgezogen</span>
+  </div>
+
+  <div id="dropzone">
+    <div id="empty">
+      <div class="e-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="28" height="28"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/><line x1="12" y1="12" x2="12" y2="18"/><line x1="9" y1="15" x2="15" y2="15"/></svg></div>
+      <div class="e-title">Links ablegen oder einfügen</div>
+      <div class="e-sub">Ziehe URLs hierher oder drücke <kbd>STRG+V</kbd></div>
+      <div class="kbdrow">
+        <div class="kbdi"><kbd>STRG+V</kbd> Einfügen</div>
+        <div class="kbdi"><kbd>STRG+S</kbd> Alle speichern</div>
+        <div class="kbdi"><kbd>ESC</kbd> Panel</div>
+      </div>
+    </div>
+    <div id="cards-grid"></div>
+  </div>
+</div>
+
+<!-- SETTINGS PANEL -->
+<aside id="panel">
+  <div class="p-head">
+    <div class="p-title">⚙ Einstellungen</div>
+    <button class="btn-cls" onclick="closePanel()">×</button>
+  </div>
+  <div class="p-tabs">
+    <button class="p-tab active" data-tab="ai" onclick="switchTab('ai')">AI / NIM</button>
+    <button class="p-tab" data-tab="la" onclick="switchTab('la')">LinkAce</button>
+    <button class="p-tab" data-tab="meta" onclick="switchTab('meta')">Meta</button>
+    <button class="p-tab" data-tab="fav" onclick="switchTab('fav')">Favicons</button>
+    <button class="p-tab" data-tab="arch" onclick="switchTab('arch')">Archiv</button>
+    <button class="p-tab" data-tab="bak" onclick="switchTab('bak')">Backup</button>
+  </div>
+  <div class="p-panes">
+
+    <!-- AI / NIM -->
+    <div class="p-pane active" id="pane-ai">
+      <div class="psec">NIM API Key & Modell</div>
+      <div class="fg"><label class="fl">API Key</label><input class="fi" id="nim-key" type="password" placeholder="nvapi-..." autocomplete="off"></div>
+      <div class="fg"><label class="fl">Modell</label>
+        <select class="fi" id="nim-model">
+          <option value="meta/llama-3.1-70b-instruct">meta/llama-3.1-70b-instruct</option>
+          <option value="meta/llama-3.3-70b-instruct">meta/llama-3.3-70b-instruct</option>
+          <option value="mistralai/mixtral-8x7b-instruct">mistralai/mixtral-8x7b-instruct</option>
+          <option value="nvidia/llama-3.1-nemotron-70b-instruct">nvidia/llama-3.1-nemotron-70b-instruct</option>
+          <option value="custom">Eigenes Modell…</option>
+        </select>
+      </div>
+      <div class="fg" id="nim-custom-model-wrap" style="display:none">
+        <label class="fl">Custom Model ID</label>
+        <input class="fi" id="nim-custom-model" type="text" placeholder="vendor/model-name">
+      </div>
+
+      <div class="psec">NIM Endpoint URL</div>
+      <div class="radio-group" id="nim-url-radios">
+        <label class="radio-opt checked">
+          <input type="radio" name="nim-url-mode" value="direct" checked> Direkt (https://integrate.api.nvidia.com)
+        </label>
+        <label class="radio-opt">
+          <input type="radio" name="nim-url-mode" value="cors"> Custom CORS-Proxy
+        </label>
+      </div>
+      <div id="nim-cors-wrap" style="display:none">
+        <div class="fg">
+          <label class="fl">CORS-Proxy Base URL</label>
+          <input class="fi" id="nim-cors-url" type="url" placeholder="http://myproxy:1234">
+        </div>
+        <div class="fg" style="margin-top:-8px;display:flex;align-items:center;gap:9px">
+          <input type="checkbox" id="nim-cors-proto" style="accent-color:var(--cyan);cursor:pointer">
+          <label for="nim-cors-proto" style="font-size:12px;color:var(--text2);cursor:pointer">
+            Protokoll (<code style="color:var(--cyan)">https://</code>) in Pfad einschließen
+            <br><span style="font-size:10px;color:var(--text3)">Standard: <code>proxy/integrate.api.nvidia.com/…</code> (ohne https://)<br>Aktiviert: <code>proxy/https://integrate.api.nvidia.com/…</code></span>
+          </label>
+        </div>
+        <div id="nim-cors-warn" class="warn-txt"></div>
+      </div>
+      <div class="fg">
+        <label class="fl">Vorschau NIM URL</label>
+        <div class="preview-box" id="nim-url-preview">–</div>
+      </div>
+      <button class="btn-t" onclick="testNIM()">▶ NIM Verbindung testen</button>
+
+      <div class="psec" style="margin-top:22px">NSFW-Modus</div>
+      <div class="fg" style="display:flex;align-items:center;gap:9px">
+        <input type="checkbox" id="nsfw-mode" style="accent-color:var(--red);width:16px;height:16px;cursor:pointer">
+        <label for="nsfw-mode" style="font-size:12px;color:var(--text2);cursor:pointer">NSFW-Modus aktivieren<br><span style="font-size:10px;color:var(--text3)">NIM & externe Favicon-Dienste erst nach Klick auf "Extern laden"</span></label>
+      </div>
+    </div>
+
+    <!-- LINKACE -->
+    <div class="p-pane" id="pane-la">
+      <div class="psec">Verbindung</div>
+      <div class="fg"><label class="fl">Base URL</label><input class="fi" id="la-url" type="url" placeholder="https://linkace.example.com"></div>
+      <div class="fg"><label class="fl">API Token</label><input class="fi" id="la-token" type="password" placeholder="Bearer Token" autocomplete="off"></div>
+      <button class="btn-t" onclick="testLA()">▶ LinkAce Verbindung testen</button>
+
+      <div class="psec">Listen verwalten</div>
+      <div class="create-list-row">
+        <input class="fi" id="new-list-name" type="text" placeholder="Neuer Listenname…" onkeydown="if(event.key==='Enter')createListLA()">
+        <button class="btn-add" onclick="createListLA()">+ Erstellen</button>
+      </div>
+      <div class="list-items" id="la-list-items">
+        <div style="font-size:11px;color:var(--text3);text-align:center;padding:10px">Noch keine Listen geladen</div>
+      </div>
+      <button class="btn-t" onclick="loadLinkAceData()">↺ Listen & Tags neu laden</button>
+    </div>
+
+    <!-- META SCRAPING -->
+    <div class="p-pane" id="pane-meta">
+      <div class="psec">Proxy für Metadaten-Abruf</div>
+      <div class="radio-group" id="meta-proxy-radios">
+        <label class="radio-opt checked">
+          <input type="radio" name="meta-proxy-mode" value="none" checked> Kein Proxy (direkter Fetch)
+        </label>
+        <label class="radio-opt">
+          <input type="radio" name="meta-proxy-mode" value="nim"> NIM CORS-Proxy verwenden
+        </label>
+        <label class="radio-opt">
+          <input type="radio" name="meta-proxy-mode" value="custom"> Anderer Proxy (Freitextfeld)
+        </label>
+      </div>
+      <div id="meta-custom-proxy-wrap" style="display:none">
+        <div class="fg">
+          <label class="fl">Custom Meta-Proxy URL</label>
+          <input class="fi" id="meta-proxy-url" type="url" placeholder="https://meta-proxy.example.com">
+        </div>
+        <div class="fg" style="margin-top:-8px">
+          <label class="fl" style="display:flex;align-items:center;gap:6px">
+            <input type="checkbox" id="meta-proxy-auth" style="accent-color:var(--cyan)"> Auth-Header mitsenden
+          </label>
+          <input class="fi" id="meta-proxy-auth-val" type="text" placeholder="Authorization: Bearer …" style="margin-top:6px">
+        </div>
+      </div>
+      <div id="meta-proxy-warn" class="warn-txt"></div>
+      <button class="btn-t" onclick="testMetaProxy()">▶ Meta-Proxy testen (google.com)</button>
+
+      <div class="psec">Metadata Scraper Services</div>
+      <div class="radio-group" style="margin-bottom:10px">
+        <label class="radio-opt" id="scraper-order-first-opt">
+          <input type="radio" name="scraper-order" value="first"> Scraper zuerst abfragen
+        </label>
+        <label class="radio-opt checked" id="scraper-order-last-opt">
+          <input type="radio" name="scraper-order" value="last" checked> Scraper als Fallback
+        </label>
+      </div>
+      <div id="scraper-list"></div>
+      <div style="display:flex;gap:7px">
+        <input class="fi" id="scraper-new" type="url" placeholder="https://scraper.example.com" style="flex:1">
+        <button class="btn-add" onclick="addScraper()">+</button>
+      </div>
+      <div class="info-txt">Kompatibel mit <a href="https://github.com/TheFoundation/cloudflare-worker-scraper" target="_blank" style="color:var(--cyan)">cloudflare-worker-scraper</a> und ähnlichen Services.</div>
+    </div>
+
+    <!-- FAVICONS -->
+    <div class="p-pane" id="pane-fav">
+      <div class="psec">Custom Favicon-Proxys</div>
+      <div class="info-txt" style="margin-bottom:12px">Eigene Proxys werden zuerst abgefragt.<br>Platzhalter: <code style="color:var(--cyan)">{domain}</code> und <code style="color:var(--cyan)">{url}</code></div>
+      <div id="fav-proxy-list"></div>
+      <div style="display:flex;gap:7px;margin-bottom:16px">
+        <input class="fi" id="fav-proxy-new" type="url" placeholder="https://favicon.example.com?domain={domain}" style="flex:1">
+        <button class="btn-add" onclick="addFavProxy()">+</button>
+      </div>
+      <div class="psec">Fallback-Reihenfolge</div>
+      <div class="info-txt">Nach eigenen Proxys wird in dieser Reihenfolge abgefragt:</div>
+      <div style="display:flex;flex-direction:column;gap:5px;margin-top:8px;font-size:11px;color:var(--text3)">
+        <div class="list-item">1. Google Favicons (google.com/s2/favicons)</div>
+        <div class="list-item">2. Yandex Favicons (favicon.yandex.net)</div>
+        <div class="list-item">3. Yahoo Favicons (favicons.search.yahoo.com)</div>
+        <div class="list-item">4. DuckDuckGo Icons (icons.duckduckgo.com)</div>
+      </div>
+    </div>
+
+    <!-- ARCHIV -->
+    <div class="p-pane" id="pane-arch">
+      <div class="psec">Archiv-URLs</div>
+      <div class="info-txt" style="margin-bottom:12px">Wenn Metadaten unzureichend sind, wird ein "Archiv"-Button angezeigt. <code style="color:var(--cyan)">*</code> gilt global.</div>
+      <div id="arch-rows"></div>
+      <button class="btn-add" onclick="addArchRow()" style="width:100%;justify-content:center;margin-top:4px">+ Eintrag hinzufügen</button>
+      <div class="info-txt" style="margin-top:12px">Beispiele:<br>
+        <code style="color:var(--cyan)">*</code> → https://archive.is<br>
+        <code style="color:var(--cyan)">reddit.com</code> → https://archive.ph<br>
+        <code style="color:var(--cyan)">medium.com</code> → https://12ft.io
+      </div>
+    </div>
+
+    <!-- BACKUP -->
+    <div class="p-pane" id="pane-bak">
+      <div class="psec">Export</div>
+      <button class="btn-t" onclick="exportBackup('config')">↓ Konfiguration exportieren (JSON)</button>
+      <button class="btn-t" onclick="exportBackup('linkace')">↓ LinkAce-Daten exportieren (Listen + Tags)</button>
+      <button class="btn-t" onclick="exportBackup('all')">↓ Vollständiges Backup exportieren</button>
+
+      <div class="psec">Import</div>
+      <div class="fg">
+        <label class="fl">JSON-Datei importieren</label>
+        <input class="fi" type="file" id="import-file" accept=".json" onchange="importBackup(this)">
+      </div>
+      <div class="warn-txt show" id="bak-warn" style="display:block">
+        ⚠ Beim Import werden bestehende Einstellungen überschrieben.
+      </div>
+
+      <div class="psec">Gefahrenzone</div>
+      <button class="btn-t btn-danger" onclick="clearAllData()">✕ Alle lokalen Daten löschen</button>
+    </div>
+  </div>
+</aside>
+
+<!-- BOTTOM BAR -->
+<div id="btm-bar">
+  <span id="btm-cnt" style="font-size:11px;color:var(--text2)">0 bereit</span>
+  <button class="btn btn-sva" onclick="saveAll()">↑ ALLE SPEICHERN</button>
+</div>
+<button id="disc-all" onclick="discardAll()">✕ Alle verwerfen</button>
+<div id="drop-border"></div>
+
+<!-- CORS MODAL -->
+<div class="modal-overlay" id="cors-modal">
+  <div class="modal">
+    <h2>⚠ CORS-Probleme erkannt</h2>
+    <p>Es wurden bereits <b id="cors-count">3</b> fehlgeschlagene Meta-Abrufe aufgrund von CORS-Fehlern registriert.<br><br>
+    Ohne einen CORS-Proxy können externe Metadaten und möglicherweise auch NIM-Anfragen aus dem Browser nicht funktionieren.<br><br>
+    <b style="color:var(--cyan)">Es wird dringend empfohlen, einen CORS-Proxy einzurichten.</b><br>
+    Gehe zu <b>Settings → Meta</b> und trage deinen Proxy ein.</p>
+    <div class="modal-actions">
+      <button class="btn btn-disc" onclick="document.getElementById('cors-modal').classList.remove('open')">Schließen</button>
+      <button class="btn btn-sv" onclick="document.getElementById('cors-modal').classList.remove('open');openPanel('meta')">Proxy einrichten</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+// ╔══════════════════════════════════════════════════╗
+// ║  CONFIG                                          ║
+// ╚══════════════════════════════════════════════════╝
+const LS = {
+  get: k => localStorage.getItem(k),
+  set: (k,v) => localStorage.setItem(k, typeof v === 'object' ? JSON.stringify(v) : v),
+  getJ: (k,d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d } catch { return d } }
+};
+
+function getCfg() {
+  return {
+    laUrl: (LS.get('la_url')||'').replace(/\/$/,''),
+    laToken: LS.get('la_token')||'',
+    nimKey: LS.get('nim_key')||'',
+    nimModel: LS.get('nim_model')||'meta/llama-3.1-70b-instruct',
+    nimCustomModel: LS.get('nim_custom_model')||'',
+    nimUrlMode: LS.get('nim_url_mode')||'direct',
+    nimCorsUrl: (LS.get('nim_cors_url')||'').replace(/\/$/,''),
+    nimCorsProto: LS.get('nim_cors_proto')==='1',
+    metaProxyMode: LS.get('meta_proxy_mode')||'none',
+    metaProxyUrl: (LS.get('meta_proxy_url')||'').replace(/\/$/,''),
+    metaProxyAuth: LS.get('meta_proxy_auth')==='1',
+    metaProxyAuthVal: LS.get('meta_proxy_auth_val')||'',
+    scraperOrder: LS.get('scraper_order')||'last',
+    scrapers: LS.getJ('scrapers', []),
+    favProxies: LS.getJ('fav_proxies', []),
+    archiveRules: LS.getJ('archive_rules', [{ domain: '*', url: 'https://archive.is' }]),
+    nsfwMode: LS.get('nsfw_mode')==='1',
+    savedToday: parseInt(LS.get('saved_today')||'0'),
+    savedDate: LS.get('saved_date')||''
+  };
+}
+
+function saveCfg() {
+  LS.set('la_url', $v('la-url'));
+  LS.set('la_token', $v('la-token'));
+  LS.set('nim_key', $v('nim-key'));
+  const model = $v('nim-model');
+  LS.set('nim_model', model);
+  if (model === 'custom') LS.set('nim_custom_model', $v('nim-custom-model'));
+  LS.set('nim_url_mode', document.querySelector('[name=nim-url-mode]:checked')?.value||'direct');
+  LS.set('nim_cors_url', $v('nim-cors-url'));
+  LS.set('nim_cors_proto', $('nim-cors-proto')?.checked?'1':'0');
+  LS.set('meta_proxy_mode', document.querySelector('[name=meta-proxy-mode]:checked')?.value||'none');
+  LS.set('meta_proxy_url', $v('meta-proxy-url'));
+  LS.set('meta_proxy_auth', $('meta-proxy-auth')?.checked?'1':'0');
+  LS.set('meta_proxy_auth_val', $v('meta-proxy-auth-val'));
+  LS.set('scraper_order', document.querySelector('[name=scraper-order]:checked')?.value||'last');
+  LS.set('nsfw_mode', $('nsfw-mode')?.checked?'1':'0');
+  updateNIMPreview();
+  updateNSFWBadge();
+}
+
+function loadCfgToPanel() {
+  const c = getCfg();
+  $sv('la-url', c.laUrl);
+  $sv('la-token', c.laToken);
+  $sv('nim-key', c.nimKey);
+  $sv('nim-model', c.nimModel);
+  $sv('nim-custom-model', c.nimCustomModel);
+  if (c.nimModel === 'custom') show('nim-custom-model-wrap');
+  // NIM URL radio
+  document.querySelectorAll('[name=nim-url-mode]').forEach(r => {
+    r.checked = r.value === c.nimUrlMode;
+    r.closest('.radio-opt')?.classList.toggle('checked', r.checked);
+  });
+  if (c.nimUrlMode === 'cors') show('nim-cors-wrap');
+  $sv('nim-cors-url', c.nimCorsUrl);
+  if ($('nim-cors-proto')) $('nim-cors-proto').checked = c.nimCorsProto;
+  // Meta proxy radio
+  document.querySelectorAll('[name=meta-proxy-mode]').forEach(r => {
+    r.checked = r.value === c.metaProxyMode;
+    r.closest('.radio-opt')?.classList.toggle('checked', r.checked);
+  });
+  if (c.metaProxyMode === 'custom') show('meta-custom-proxy-wrap');
+  $sv('meta-proxy-url', c.metaProxyUrl);
+  if ($('meta-proxy-auth')) $('meta-proxy-auth').checked = c.metaProxyAuth;
+  $sv('meta-proxy-auth-val', c.metaProxyAuthVal);
+  // Scraper order
+  document.querySelectorAll('[name=scraper-order]').forEach(r => {
+    r.checked = r.value === c.scraperOrder;
+    r.closest('.radio-opt')?.classList.toggle('checked', r.checked);
+  });
+  if ($('nsfw-mode')) $('nsfw-mode').checked = c.nsfwMode;
+  updateNIMPreview();
+  renderScrapers();
+  renderFavProxies();
+  renderArchRows();
+  renderLALists();
+  updateNSFWBadge();
+}
+
+// Helpers
+const $ = id => document.getElementById(id);
+const $v = id => $( id)?.value?.trim() ?? '';
+const $sv = (id, v) => { if ($(id)) $(id).value = v||'' };
+const show = id => { if ($(id)) $(id).style.display = '' };
+const hide = id => { if ($(id)) $(id).style.display = 'none' };
+
+// ╔══════════════════════════════════════════════════╗
+// ║  UI HELPERS                                      ║
+// ╚══════════════════════════════════════════════════╝
+function toast(msg, type='i', dur=3000) {
+  const c = $('toasts');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  const ic = {s:'✓',e:'✕',i:'◆',w:'⚠'};
+  const col = {s:'var(--green)',e:'var(--red)',i:'var(--cyan)',w:'var(--amber)'};
+  el.innerHTML = `<span style="color:${col[type]};flex-shrink:0">${ic[type]}</span><span>${msg}</span>`;
+  c.appendChild(el);
+  setTimeout(() => { el.classList.add('out'); setTimeout(()=>el.remove(),350) }, dur);
+}
+
+function openPanel(tab='ai') {
+  $('panel').classList.add('open');
+  $('app').classList.add('panel-open');
+  switchTab(tab);
+}
+function closePanel() {
+  $('panel').classList.remove('open');
+  $('app').classList.remove('panel-open');
+}
+function switchTab(name) {
+  document.querySelectorAll('.p-tab').forEach(t => t.classList.toggle('active', t.dataset.tab===name));
+  document.querySelectorAll('.p-pane').forEach(p => p.classList.toggle('active', p.id===`pane-${name}`));
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key==='Escape') closePanel();
+  if ((e.ctrlKey||e.metaKey) && e.key==='s') { e.preventDefault(); saveAll(); }
+});
+
+// Bind all config inputs
+document.querySelectorAll('#panel input, #panel select').forEach(el => {
+  el.addEventListener('change', saveCfg);
+  el.addEventListener('input', () => {
+    saveCfg();
+    if (el.closest('#pane-ai')) updateNIMPreview();
+  });
+});
+
+// Radio visual update
+document.querySelectorAll('.radio-opt input[type=radio]').forEach(r => {
+  r.addEventListener('change', () => {
+    document.querySelectorAll(`.radio-opt input[name="${r.name}"]`).forEach(x => {
+      x.closest('.radio-opt').classList.toggle('checked', x.checked);
+    });
+    saveCfg();
+    if (r.name==='nim-url-mode') { r.value==='cors' ? show('nim-cors-wrap') : hide('nim-cors-wrap'); updateNIMPreview(); }
+    if (r.name==='meta-proxy-mode') { r.value==='custom' ? show('meta-custom-proxy-wrap') : hide('meta-custom-proxy-wrap'); }
+  });
+});
+document.querySelector('[name=nim-model]')?.addEventListener('change', e => {
+  e.target.value==='custom' ? show('nim-custom-model-wrap') : hide('nim-custom-model-wrap');
+});
+
+function updateNIMPreview() {
+  const c = getCfg();
+  const nimHost = 'integrate.api.nvidia.com/v1/chat/completions';
+  const nimFull = `https://${nimHost}`;
+  let preview;
+  if (c.nimUrlMode === 'cors' && c.nimCorsUrl) {
+    const path = c.nimCorsProto ? nimFull : nimHost;
+    preview = `<span>${c.nimCorsUrl}/</span>${path}`;
+  } else {
+    preview = `<span>${nimFull}</span>`;
+  }
+  const el = $('nim-url-preview');
+  if (el) el.innerHTML = preview;
+}
+
+function getNIMEndpoint() {
+  const c = getCfg();
+  const nimHost = 'integrate.api.nvidia.com/v1/chat/completions';
+  const nimFull = `https://${nimHost}`;
+  if (c.nimUrlMode==='cors' && c.nimCorsUrl) {
+    const path = c.nimCorsProto ? nimFull : nimHost;
+    return `${c.nimCorsUrl}/${path}`;
+  }
+  return nimFull;
+}
+
+function updateNSFWBadge() {
+  const c = getCfg();
+  const wrap = $('nsfw-wrap');
+  if (wrap) wrap.style.display = c.nsfwMode ? '' : 'none';
+}
+function toggleNSFW() {
+  LS.set('nsfw_mode', getCfg().nsfwMode ? '0' : '1');
+  if ($('nsfw-mode')) $('nsfw-mode').checked = !getCfg().nsfwMode;
+  updateNSFWBadge();
+  toast('NSFW-Modus ' + (getCfg().nsfwMode ? 'aktiviert' : 'deaktiviert'), 'w');
+}
+
+// ╔══════════════════════════════════════════════════╗
+// ║  STATE                                           ║
+// ╚══════════════════════════════════════════════════╝
+const S = {
+  lists: [],
+  tags: [],
+  cards: new Map(),
+  nimQueue: [],     // [{id, priority}]
+  nimRunning: false,
+  corsErrCount: 0,
+  corsModalShown: false,
+  savedToday: 0
+};
+let cardN = 0;
+
+// Reset daily counter
+{
+  const today = new Date().toDateString();
+  if (LS.get('saved_date') !== today) { LS.set('saved_today','0'); LS.set('saved_date', today); }
+  S.savedToday = parseInt(LS.get('saved_today')||'0');
+}
+
+// ╔══════════════════════════════════════════════════╗
+// ║  LANGUAGE DETECTION                              ║
+// ╚══════════════════════════════════════════════════╝
+const LANGS = [
+  'haskell','erlang','elixir','clojure','lisp','scheme','ocaml','f#','sml',
+  'rust','golang','go','zig','nim','odin',
+  'javascript','typescript','coffeescript','deno','node.js','bun',
+  'python','django','flask','fastapi',
+  'java','kotlin','scala','groovy','clojure',
+  'c#','dotnet','.net','asp.net',
+  'c++','cpp','c programming',
+  'swift','objective-c',
+  'php','laravel','symfony',
+  'ruby','rails',
+  'r language','julia','matlab',
+  'lua','perl','bash','powershell','shell script',
+  'webassembly','wasm',
+  'cloudflare workers','cloudflare pages',
+  'react','vue','angular','svelte','nextjs','next.js','nuxt',
+  'graphql','sql','postgresql','mysql','mongodb',
+  'docker','kubernetes','terraform','ansible',
+  'html','css','sass','tailwind'
+];
+const SO_DOMAINS = ['stackoverflow.com','superuser.com','serverfault.com','askubuntu.com','stackexchange.com','mathoverflow.net'];
+
+function detectLangs(title='', desc='', url='') {
+  const hay = (title + ' ' + desc + ' ' + url).toLowerCase();
+  const found = [];
+  for (const lang of LANGS) {
+    if (hay.includes(lang.toLowerCase())) found.push(lang);
+  }
+  // StackOverflow URL tags like /tagged/javascript
+  if (SO_DOMAINS.some(d => url.includes(d))) {
+    const m = url.match(/\/tagged\/([^/?]+)/);
+    if (m) found.push(decodeURIComponent(m[1]));
+    const tm = url.match(/\/questions\/\d+\/([^/?]+)/);
+    if (tm) {
+      const slug = decodeURIComponent(tm[1]).replace(/-/g,' ');
+      for (const l of LANGS) { if (slug.includes(l.toLowerCase())) found.push(l); }
+    }
+  }
+  return [...new Set(found)].slice(0,4);
+}
+
+// ╔══════════════════════════════════════════════════╗
+// ║  METADATA FETCHER                                ║
+// ╚══════════════════════════════════════════════════╝
+async function fetchMeta(url) {
+  const c = getCfg();
+  const result = { title:'', description:'', langs:[], isSOSite: false };
+  const domain = getDomain(url);
+  const isSOSite = SO_DOMAINS.some(d => domain.includes(d));
+  result.isSOSite = isSOSite;
+
+  async function tryFetch(targetUrl, extraHeaders={}) {
+    try {
+      const res = await fetch(targetUrl, { signal: AbortSignal.timeout(5000), headers: extraHeaders });
+      if (!res.ok) return null;
+      const html = await res.text();
+      return parseHTMLMeta(html, url);
+    } catch (e) {
+      if (e.name !== 'AbortError') {
+        S.corsErrCount++;
+        if (S.corsErrCount >= 3 && !S.corsModalShown) {
+          S.corsModalShown = true;
+          $('cors-count').textContent = S.corsErrCount;
+          $('cors-modal').classList.add('open');
+        }
+      }
+      return null;
+    }
+  }
+
+  function buildProxied(proxyBase, targetUrl, authVal) {
+    const headers = {};
+    if (authVal) {
+      const [k,...rest] = authVal.split(':');
+      if (k && rest.length) headers[k.trim()] = rest.join(':').trim();
+    }
+    return { url: `${proxyBase}/${targetUrl}`, headers };
+  }
+
+  let meta = null;
+
+  // Scraper services
+  const scrapers = c.scrapers || [];
+  if (c.scraperOrder === 'first' && scrapers.length) {
+    for (const s of scrapers) {
+      meta = await tryFetch(`${s.replace(/\/$/,'')}/${encodeURIComponent(url)}`);
+      if (meta?.title) break;
+    }
+  }
+  if (!meta?.title) {
+    // Main proxy logic
+    if (c.metaProxyMode === 'nim' && c.nimCorsUrl) {
+      const { url: pu, headers } = buildProxied(c.nimCorsUrl, url, '');
+      meta = await tryFetch(pu, headers);
+    } else if (c.metaProxyMode === 'custom' && c.metaProxyUrl) {
+      const { url: pu, headers } = buildProxied(c.metaProxyUrl, url, c.metaProxyAuth?c.metaProxyAuthVal:'');
+      meta = await tryFetch(pu, headers);
+    } else {
+      // Direct (will likely CORS-fail for cross-origin)
+      meta = await tryFetch(url);
+    }
+  }
+  if (!meta?.title && c.scraperOrder === 'last' && scrapers.length) {
+    for (const s of scrapers) {
+      meta = await tryFetch(`${s.replace(/\/$/,'')}/${encodeURIComponent(url)}`);
+      if (meta?.title) break;
+    }
+  }
+
+  if (meta) {
+    result.title = meta.title || '';
+    result.description = meta.description || '';
+  }
+
+  // Fallback title from URL
+  if (!result.title) {
+    try {
+      const u = new URL(url);
+      const parts = u.pathname.split('/').filter(Boolean);
+      const last = parts[parts.length-1];
+      if (last) result.title = decodeURIComponent(last.replace(/[-_]/g,' ').replace(/\.[^.]+$/,''));
+      else result.title = u.hostname.replace('www.','');
+    } catch { result.title = url; }
+  }
+
+  result.langs = detectLangs(result.title, result.description, url);
+  return result;
+}
+
+function parseHTMLMeta(html, url) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const get = (sel, attr='content') => doc.querySelector(sel)?.getAttribute(attr) || '';
+  const isSOSite = SO_DOMAINS.some(d => url.includes(d));
+
+  let title = '';
+  if (isSOSite) {
+    // For SO: prefer structured title, strip "- Stack Overflow" suffix
+    title = doc.querySelector('title')?.textContent?.replace(/\s*[-|—]\s*(Stack Overflow|Super User|Ask Ubuntu|Server Fault|Stack Exchange).*/i,'').trim() || '';
+  } else {
+    title = get('meta[property="og:title"]') || get('meta[name="twitter:title"]') || doc.querySelector('title')?.textContent?.trim() || '';
+  }
+
+  let desc = '';
+  if (isSOSite) {
+    // SO: use the question body or first tag as description
+    desc = get('meta[name="description"]') || '';
+    // Extract SO tags from meta keywords
+    const kw = get('meta[name="keywords"]');
+    if (kw) desc = kw + ' ' + desc;
+  } else {
+    desc = get('meta[property="og:description"]') || get('meta[name="description"]') || get('meta[name="twitter:description"]') || '';
+  }
+
+  return { title: title.slice(0,200), description: desc.slice(0,500) };
+}
+
+// ╔══════════════════════════════════════════════════╗
+// ║  FAVICON FETCHER                                 ║
+// ╚══════════════════════════════════════════════════╝
+function getFaviconSources(url) {
+  const c = getCfg();
+  const domain = getDomain(url);
+  const sources = [];
+  // Custom proxies first
+  for (const p of (c.favProxies||[])) {
+    sources.push(p.replace('{domain}', encodeURIComponent(domain)).replace('{url}', encodeURIComponent(url)));
+  }
+  // Fallbacks
+  if (!c.nsfwMode) {
+    sources.push(`https://www.google.com/s2/favicons?sz=32&domain=${domain}`);
+    sources.push(`https://favicon.yandex.net/favicon/${domain}`);
+    sources.push(`https://favicons.search.yahoo.com/favicon?domain=${domain}`);
+    sources.push(`https://icons.duckduckgo.com/ip3/${domain}.ico`);
+  } else {
+    // In NSFW mode, only use internal/first-party
+    sources.push(...(c.favProxies||[]).map(p => p.replace('{domain}',domain).replace('{url}',url)));
+    // Add at least one safe generic
+    sources.push(`data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%232a2a35'/><text x='8' y='12' text-anchor='middle' font-size='10' fill='%235a5a72'>🔗</text></svg>`);
+  }
+  return [...new Set(sources)];
+}
+
+function loadFavicon(imgEl, url) {
+  const sources = getFaviconSources(url);
+  let idx = 0;
+  function tryNext() {
+    if (idx >= sources.length) {
+      imgEl.src = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%232a2a35'/></svg>`;
+      return;
+    }
+    imgEl.src = sources[idx++];
+    imgEl.onerror = tryNext;
+  }
+  tryNext();
+}
+
+// ╔══════════════════════════════════════════════════╗
+// ║  LINKACE API                                     ║
+// ╚══════════════════════════════════════════════════╝
+async function laReq(path, method='GET', body=null) {
+  const c = getCfg();
+  if (!c.laUrl || !c.laToken) throw new Error('LinkAce nicht konfiguriert');
+  const opts = {
+    method,
+    headers: { 'Authorization': `Bearer ${c.laToken}`, 'Content-Type': 'application/json', 'Accept': 'application/json' }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(`${c.laUrl}/api/v1${path}`, opts);
+  if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+async function loadLinkAceData() {
+  const dot = $('d-la');
+  dot.className = 'ind-dot loading';
+  try {
+    const [ld, td] = await Promise.all([laReq('/lists?per_page=200'), laReq('/tags?per_page=500')]);
+    S.lists = (ld.data || ld || []);
+    S.tags = (td.data || td || []);
+    dot.className = 'ind-dot ok';
+    toast(`${S.lists.length} Listen & ${S.tags.length} Tags geladen`,'s');
+    updateStats();
+    renderLALists();
+    // Re-render all cards to reflect new lists
+    for (const id of S.cards.keys()) renderCard(id);
+  } catch(e) {
+    dot.className = 'ind-dot err';
+    toast(`LinkAce: ${e.message}`,'e',5000);
+  }
+}
+
+async function testLA() {
+  saveCfg();
+  try { await laReq('/lists?per_page=1'); toast('LinkAce verbunden ✓','s'); await loadLinkAceData(); }
+  catch(e) { toast(`LinkAce Fehler: ${e.message}`,'e',5000); }
+}
+
+async function createListLA() {
+  const name = $v('new-list-name');
+  if (!name) { toast('Listenname eingeben','w'); return; }
+  try {
+    const res = await laReq('/lists', 'POST', { name, description: '' });
+    const newList = res.data || res;
+    S.lists.push(newList);
+    $sv('new-list-name','');
+    renderLALists();
+    for (const id of S.cards.keys()) renderCard(id);
+    toast(`Liste "${name}" erstellt`,'s');
+    updateStats();
+  } catch(e) { toast(`Liste erstellen: ${e.message}`,'e',5000); }
+}
+
+function renderLALists() {
+  const el = $('la-list-items');
+  if (!el) return;
+  if (!S.lists.length) { el.innerHTML = '<div style="font-size:11px;color:var(--text3);text-align:center;padding:10px">Keine Listen</div>'; return; }
+  el.innerHTML = S.lists.map(l => `
+    <div class="list-item">
+      <span title="${escH(l.name)}">${escH(l.name)}</span>
+      <span style="color:var(--text3);font-size:10px">#${l.id}</span>
+    </div>
+  `).join('');
+}
+
+// ╔══════════════════════════════════════════════════╗
+// ║  NIM API + QUEUE                                 ║
+// ╚══════════════════════════════════════════════════╝
+async function testNIM() {
+  saveCfg();
+  const c = getCfg();
+  if (!c.nimKey) { toast('NIM API Key fehlt','e'); return; }
+  const dot = $('d-nim');
+  dot.className = 'ind-dot loading';
+  try {
+    const endpoint = getNIMEndpoint();
+    const headers = { 'Content-Type':'application/json', 'Authorization':`Bearer ${c.nimKey}` };
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ model: getModel(), max_tokens: 5, messages: [{ role:'user', content:'hi' }] })
+    });
+    if (res.status === 404) {
+      dot.className = 'ind-dot err';
+      toast(`NIM 404: Endpoint nicht gefunden. Möglicherweise unterstützt das Modell "${getModel()}" diesen Request nicht oder der CORS-Proxy leitet falsch weiter.`,'e',8000);
+      return;
+    }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    dot.className = 'ind-dot ok';
+    toast('NIM API verbunden ✓','s');
+  } catch(e) {
+    dot.className = 'ind-dot err';
+    toast(`NIM Fehler: ${e.message}`,'e',5000);
+  }
+}
+
+function getModel() {
+  const c = getCfg();
+  return c.nimModel === 'custom' ? c.nimCustomModel : c.nimModel;
+}
+
+// Queue management
+function enqueueNIM(cardId, priority=0) {
+  // Remove if already in queue
+  S.nimQueue = S.nimQueue.filter(x => x.id !== cardId);
+  if (priority > 0) {
+    // Move to front
+    S.nimQueue.unshift({ id: cardId, paused: false });
+  } else {
+    S.nimQueue.push({ id: cardId, paused: false });
+  }
+  updateQueueBar();
+  if (!S.nimRunning) processQueue();
+}
+
+function pauseCardInQueue(cardId) {
+  const item = S.nimQueue.find(x => x.id === cardId);
+  if (item && !item.processing) {
+    item.paused = true;
+    // Move to end
+    S.nimQueue = S.nimQueue.filter(x => x.id !== cardId);
+    S.nimQueue.push({ id: cardId, paused: false });
+    const card = S.cards.get(cardId);
+    if (card && card.status === 'queued') {
+      document.getElementById(cardId)?.classList.add('hovered-q');
+    }
+    updateQueueBar();
+  }
+}
+
+function unpauseCard(cardId) {
+  document.getElementById(cardId)?.classList.remove('hovered-q');
+}
+
+function promoteCard(cardId) {
+  // On manual list/tag interaction: move to front of queue
+  const inQueue = S.nimQueue.find(x => x.id === cardId);
+  if (inQueue) {
+    S.nimQueue = S.nimQueue.filter(x => x.id !== cardId);
+    S.nimQueue.unshift({ id: cardId, paused: false });
+    updateQueueBar();
+    if (!S.nimRunning) processQueue();
+    toast('Link in NIM-Queue vorgezogen','i',2000);
+  }
+}
+
+async function processQueue() {
+  if (S.nimQueue.length === 0) { S.nimRunning = false; updateQueueBar(); return; }
+  S.nimRunning = true;
+  const item = S.nimQueue.find(x => !x.paused);
+  if (!item) { S.nimRunning = false; updateQueueBar(); return; }
+  S.nimQueue = S.nimQueue.filter(x => x.id !== item.id);
+  item.processing = true;
+
+  updateQueueBar(item.id);
+  const card = S.cards.get(item.id);
+  if (!card) { processQueue(); return; }
+
+  try {
+    const c = getCfg();
+    const nsfwMode = c.nsfwMode;
+    if (nsfwMode && !card.externalLoaded) {
+      // Don't call NIM in NSFW mode until external is explicitly requested
+      card.status = 'ready';
+      card.nimSkipped = true;
+      renderCard(item.id);
+      updateSaveBar();
+    } else {
+      await runNIMForCard(item.id);
+    }
+  } catch(e) { console.error('Queue error', e); }
+
+  // Small delay between NIM calls
+  await delay(300);
+  processQueue();
+}
+
+function updateQueueBar() {
+  const count = S.nimQueue.length;
+  const bar = $('queue-bar');
+  bar.classList.toggle('visible', count > 0 || S.nimRunning);
+  $('q-count').textContent = count;
+  $('s-q').textContent = count;
+}
+
+async function runNIMForCard(cardId) {
+  const card = S.cards.get(cardId);
+  if (!card) return;
+  const c = getCfg();
+  if (!c.nimKey) {
+    card.status = 'ready';
+    renderCard(cardId);
+    updateSaveBar();
+    return;
+  }
+
+  card.nimStatus = 'running';
+  const dot = $('d-nim');
+  dot.className = 'ind-dot loading';
+
+  try {
+    const listsInfo = S.lists.map(l => `ID ${l.id}: "${l.name}"`).join(', ');
+    const tagsInfo = S.tags.slice(0,60).map(t=>t.name).join(', ');
+    const langs = card.meta?.langs?.join(', ') || '';
+
+    const prompt = `Analysiere diesen Bookmark und schlage passende LinkAce-Listen und Tags vor.
+
+URL: ${card.url}
+Titel: ${card.meta?.title || '(unbekannt)'}
+Programmiersprachen/Frameworks erkannt: ${langs || 'keine'}
+StackOverflow-Site: ${card.meta?.isSOSite ? 'ja' : 'nein'}
+
+Verfügbare Listen: ${listsInfo || 'keine'}
+Verfügbare Tags: ${tagsInfo || 'keine'}
+
+Antworte NUR als valides JSON ohne Markdown:
+{"suggested_lists":[{"id":<number>,"name":"<string>","reason":"<kurz>"}],"suggested_tags":["<tag>"]}
+
+Regeln: Nur existierende Listen-IDs verwenden. Tags dürfen neu sein. Programmiersprachen bevorzugt als Tags. Maximal 5 Listen, 8 Tags.`;
+
+    const endpoint = getNIMEndpoint();
+    const headers = { 'Content-Type':'application/json', 'Authorization':`Bearer ${c.nimKey}` };
+
+    const res = await fetch(endpoint, {
+      method:'POST', headers,
+      body: JSON.stringify({ model: getModel(), max_tokens: 400, temperature: 0.15, messages:[{role:'user',content:prompt}] })
+    });
+
+    if (res.status === 404) {
+      card.nimError = `404: Modell "${getModel()}" unterstützt diesen Request möglicherweise nicht`;
+      card.status = 'ready';
+      dot.className = 'ind-dot err';
+    } else if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    } else {
+      const data = await res.json();
+      const text = data.choices?.[0]?.message?.content || '{}';
+      const clean = text.replace(/```json|```/g,'').trim();
+      const parsed = JSON.parse(clean);
+      card.aiSuggestion = parsed;
+      // Apply AI suggestions (don't override manual selections)
+      if (!card.manuallyEdited) {
+        parsed.suggested_lists?.forEach(l => card.selectedLists.add(l.id));
+        parsed.suggested_tags?.forEach(t => card.selectedTags.add(t));
+      }
+      dot.className = 'ind-dot ok';
+    }
+  } catch(e) {
+    card.nimError = e.message;
+    dot.className = 'ind-dot err';
+  }
+
+  card.status = 'ready';
+  renderCard(cardId);
+  updateSaveBar();
+}
+
+// ╔══════════════════════════════════════════════════╗
+// ║  CARD MANAGEMENT                                 ║
+// ╚══════════════════════════════════════════════════╝
+function createCard(url) {
+  const id = `c${++cardN}`;
+  const card = {
+    id, url, meta: null, status: 'queued',
+    selectedLists: new Set(), selectedTags: new Set(),
+    aiSuggestion: null, nimError: null, nimSkipped: false,
+    externalLoaded: false, manuallyEdited: false, saved: false
+  };
+  S.cards.set(id, card);
+  renderCard(id);
+  updateSaveBar();
+  // Start meta fetch
+  fetchMeta(url).then(meta => {
+    card.meta = meta;
+    // Pre-select lists by title match
+    preSelectLists(card);
+    card.title = meta.title;
+    renderCard(id);
+    // Enqueue NIM (unless NSFW)
+    if (!getCfg().nsfwMode) {
+      card.status = 'queued';
+      renderCard(id);
+      enqueueNIM(id);
+    } else {
+      card.status = 'ready';
+      renderCard(id);
+      updateSaveBar();
+    }
+  });
+  return id;
+}
+
+function preSelectLists(card) {
+  const titleLow = (card.meta?.title || card.url).toLowerCase();
+  for (const list of S.lists) {
+    if (titleLow.includes(list.name.toLowerCase())) {
+      card.selectedLists.add(list.id);
+      card.preSelectedLists = card.preSelectedLists || new Set();
+      card.preSelectedLists.add(list.id);
+    }
+  }
+  // Also pre-select if URL contains list name
+  const urlLow = card.url.toLowerCase();
+  for (const list of S.lists) {
+    if (urlLow.includes(list.name.toLowerCase())) {
+      card.selectedLists.add(list.id);
+    }
+  }
+}
+
+function renderCard(id) {
+  const card = S.cards.get(id);
+  if (!card) return;
+  const grid = $('cards-grid');
+  let el = $(id);
+  const isNew = !el;
+  if (isNew) {
+    el = document.createElement('div');
+    el.id = id;
+    el.className = 'link-card';
+    el.addEventListener('mouseenter', () => pauseCardInQueue(id));
+    el.addEventListener('mouseleave', () => unpauseCard(id));
+    grid.prepend(el);
+  }
+
+  const domain = getDomain(card.url);
+  const meta = card.meta;
+  const ttl = meta?.title || card.title || domain;
+  const desc = meta?.description || '';
+  const langs = meta?.langs || [];
+  const archiveUrl = getArchiveUrl(domain);
+
+  // Status badge
+  const badges = [];
+  if (card.status === 'queued') badges.push('<span class="badge queued">IN QUEUE</span>');
+  else if (card.status === 'ready' && !card.saved) badges.push('<span class="badge ready">BEREIT</span>');
+  else if (card.saved) badges.push('<span class="badge saved-b">✓ GESPEICHERT</span>');
+  if (card.nimError) badges.push(`<span class="badge cors-err" title="${escH(card.nimError)}">NIM ERR</span>`);
+  langs.forEach(l => badges.push(`<span class="badge lang">${escH(l)}</span>`));
+
+  // List chips
+  const listChips = S.lists.length === 0 ? '<span style="font-size:11px;color:var(--text3)">Keine Listen geladen</span>'
+    : S.lists.map(l => {
+      const isSel = card.selectedLists.has(l.id);
+      const isAI = card.aiSuggestion?.suggested_lists?.some(s=>s.id===l.id);
+      const isPre = card.preSelectedLists?.has(l.id);
+      const reason = card.aiSuggestion?.suggested_lists?.find(s=>s.id===l.id)?.reason||'';
+      return `<button class="chip lc ${isSel?'sel':''} ${isAI?'ai-s':''} ${isPre?'pre-s':''}" 
+        onclick="toggleList('${id}',${l.id},this)" 
+        title="${reason || escH(l.name)}"
+        aria-pressed="${isSel}">${escH(l.name)}</button>`;
+    }).join('');
+
+  // Tag chips
+  const allTags = new Set([...card.selectedTags, ...(card.aiSuggestion?.suggested_tags||[])]);
+  const tagChips = [...allTags].map(t => {
+    const isSel = card.selectedTags.has(t);
+    const isAI = card.aiSuggestion?.suggested_tags?.includes(t);
+    return `<span class="chip tc ${isSel?'sel':''} ${isAI?'ai-s':''}" 
+      onclick="toggleTag('${id}','${escH(t)}',this)" aria-pressed="${isSel}">${escH(t)}<button class="chip-x" onclick="event.stopPropagation();removeTag('${id}','${t}')">×</button></span>`;
+  }).join('');
+
+  // Summary from metadata (not NIM)
+  const summary = desc ? `<div class="ai-label" style="font-size:9px;letter-spacing:1.4px;color:var(--text3);text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:6px"><span style="color:var(--text3)">■</span> Beschreibung</div><div class="ai-summary">${escH(desc.slice(0,300))}</div>` : '';
+
+  // Footer buttons
+  const isNSFW = getCfg().nsfwMode && !card.externalLoaded;
+  const isAnalyzing = card.status === 'queued';
+  const inQueue = S.nimQueue.some(x=>x.id===id);
+  let footerBtns = `
+    <button class="btn btn-sv" onclick="saveCard('${id}')" ${isAnalyzing?'disabled':''} aria-label="In LinkAce speichern">
+      ${card.saved ? '✓ Gespeichert' : '↑ Speichern'}
+    </button>
+    <button class="btn btn-disc" onclick="discardCard('${id}')">✕</button>`;
+  if (isNSFW) footerBtns += `<button class="btn btn-ext" onclick="loadExternal('${id}')">👁 Extern laden</button>`;
+  if (inQueue && !isAnalyzing) footerBtns += `<button class="btn btn-nim-now" onclick="promoteCard('${id}')">⚡ NIM jetzt</button>`;
+  if (archiveUrl) footerBtns += `<button class="btn btn-arch" onclick="window.open('${archiveUrl}/${encodeURIComponent(card.url)}','_blank')">📦 Archiv</button>`;
+
+  // Favicon placeholder
+  const favId = `fav-${id}`;
+
+  el.innerHTML = `
+    <div class="card-head">
+      <img id="${favId}" class="card-fav" src="" alt="">
+      <div class="card-info">
+        <div class="card-ttl">${escH(ttl)}</div>
+        <div class="card-url">${escH(card.url)}</div>
+      </div>
+      <div class="card-badges">${badges.join('')}</div>
+    </div>
+    <div class="card-body">
+      ${summary}
+      ${isAnalyzing ? `<div class="ai-summary"><div class="typing-dots"><span></span><span></span><span></span></div> Analysiere…</div>` : ''}
+      <div class="sec-lbl">Listen</div>
+      <div class="chips" id="${id}-lists">${listChips}</div>
+      <div class="sec-lbl">Tags</div>
+      <div class="chips" id="${id}-tags">
+        ${tagChips}
+        <input class="tag-in" placeholder="+ Tag" onkeydown="handleTagKD(event,'${id}')" aria-label="Tag hinzufügen">
+      </div>
+    </div>
+    <div class="card-foot">${footerBtns}</div>`;
+
+  if (card.saved) { el.classList.add('saved'); }
+
+  // Load favicon
+  const favEl = $(favId);
+  if (favEl && !isNSFW) loadFavicon(favEl, card.url);
+  else if (favEl) favEl.src = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%232a2a35'/></svg>`;
+}
+
+function loadExternal(cardId) {
+  const card = S.cards.get(cardId);
+  if (!card) return;
+  card.externalLoaded = true;
+  // Load favicon
+  const favEl = $(`fav-${cardId}`);
+  if (favEl) loadFavicon(favEl, card.url);
+  // Enqueue NIM
+  enqueueNIM(cardId, 1);
+  card.status = 'queued';
+  renderCard(cardId);
+}
+
+function toggleList(cardId, listId, btn) {
+  const card = S.cards.get(cardId);
+  if (!card) return;
+  card.manuallyEdited = true;
+  if (card.selectedLists.has(listId)) { card.selectedLists.delete(listId); btn.classList.remove('sel'); btn.setAttribute('aria-pressed','false'); }
+  else { card.selectedLists.add(listId); btn.classList.add('sel'); btn.setAttribute('aria-pressed','true'); }
+  // Promote in queue if NIM not yet run
+  if (card.status === 'queued' && !card.aiSuggestion) promoteCard(cardId);
+}
+
+function toggleTag(cardId, tag, btn) {
+  const card = S.cards.get(cardId);
+  if (!card) return;
+  card.manuallyEdited = true;
+  if (card.selectedTags.has(tag)) { card.selectedTags.delete(tag); btn.classList.remove('sel'); }
+  else { card.selectedTags.add(tag); btn.classList.add('sel'); }
+  if (card.status === 'queued' && !card.aiSuggestion) promoteCard(cardId);
+}
+
+function removeTag(cardId, tag) {
+  const card = S.cards.get(cardId);
+  if (!card) return;
+  card.selectedTags.delete(tag);
+  if (card.aiSuggestion?.suggested_tags) card.aiSuggestion.suggested_tags = card.aiSuggestion.suggested_tags.filter(t=>t!==tag);
+  renderCard(cardId);
+}
+
+function handleTagKD(e, cardId) {
+  if (e.key==='Enter' || e.key===',') {
+    e.preventDefault();
+    const v = e.target.value.trim().toLowerCase().replace(/,/g,'');
+    if (v) {
+      const card = S.cards.get(cardId);
+      if (card) { card.selectedTags.add(v); renderCard(cardId); setTimeout(()=>{ document.querySelector(`#${cardId} .tag-in`)?.focus(); },40); }
+    }
+  }
+}
+
+async function saveCard(id) {
+  const card = S.cards.get(id);
+  if (!card || card.status !== 'ready' || card.saved) return;
+  card.status = 'saving';
+  $(id)?.classList.add('saving');
+  try {
+    await laReq('/links', 'POST', {
+      url: card.url,
+      title: card.meta?.title || undefined,
+      list_ids: [...card.selectedLists],
+      tags: [...card.selectedTags].map(t=>({name:t})),
+      is_private: false
+    });
+    card.saved = true;
+    card.status = 'ready';
+    S.savedToday++;
+    LS.set('saved_today', S.savedToday);
+    renderCard(id);
+    updateStats();
+    toast(`Gespeichert: ${getDomain(card.url)}`,'s');
+  } catch(e) {
+    card.status = 'ready';
+    $(id)?.classList.remove('saving');
+    toast(`Fehler: ${e.message}`,'e',5000);
+  }
+}
+
+async function saveAll() {
+  const ready = [...S.cards.entries()].filter(([,d])=>d.status==='ready'&&!d.saved);
+  if (!ready.length) { toast('Keine Links zum Speichern','i'); return; }
+  for (const [id] of ready) { await saveCard(id); await delay(250); }
+}
+
+function discardCard(id) {
+  const el = $(id);
+  if (el) { el.style.transition='opacity .2s,transform .2s'; el.style.opacity='0'; el.style.transform='scale(.95)'; setTimeout(()=>{ el.remove(); S.cards.delete(id); S.nimQueue=S.nimQueue.filter(x=>x.id!==id); updateSaveBar(); updateQueueBar(); },200); }
+}
+function discardAll() { [...S.cards.keys()].forEach(discardCard); }
+
+function updateSaveBar() {
+  const ready = [...S.cards.values()].filter(c=>c.status==='ready'&&!c.saved).length;
+  const total = S.cards.size;
+  const bar = $('btm-bar');
+  bar.querySelector('#btm-cnt').textContent = `${ready} bereit`;
+  bar.classList.toggle('vis', ready > 0);
+  $('disc-all').classList.toggle('vis', total > 0);
+  $('empty').classList.toggle('hidden', total > 0);
+}
+
+function updateStats() {
+  $('s-lists').textContent = S.lists.length;
+  $('s-tags').textContent = S.tags.length;
+  $('s-saved').textContent = S.savedToday;
+}
+
+// ╔══════════════════════════════════════════════════╗
+// ║  SETTINGS PANELS - SCRAPERS / PROXIES / ARCHIVE  ║
+// ╚══════════════════════════════════════════════════╝
+function renderScrapers() {
+  const c = getCfg();
+  const el = $('scraper-list');
+  if (!el) return;
+  el.innerHTML = (c.scrapers||[]).map((s,i) => `
+    <div class="scraper-item">
+      <input type="url" value="${escH(s)}" placeholder="https://…" 
+        onchange="updateScraper(${i}, this.value)" onblur="updateScraper(${i}, this.value)">
+      <button class="chip-x" onclick="removeScraper(${i})" style="font-size:14px;color:var(--red)">×</button>
+    </div>`).join('');
+}
+
+function addScraper() {
+  const v = $v('scraper-new');
+  if (!v || !v.startsWith('http')) { toast('Gültige URL eingeben (http/https)','w'); return; }
+  const c = getCfg();
+  const scrapers = c.scrapers || [];
+  scrapers.push(v);
+  LS.set('scrapers', scrapers);
+  $sv('scraper-new','');
+  renderScrapers();
+}
+function removeScraper(i) { const c=getCfg(); c.scrapers.splice(i,1); LS.set('scrapers',c.scrapers); renderScrapers(); }
+function updateScraper(i, v) { const c=getCfg(); c.scrapers[i]=v; LS.set('scrapers',c.scrapers); }
+
+function renderFavProxies() {
+  const c = getCfg();
+  const el = $('fav-proxy-list');
+  if (!el) return;
+  el.innerHTML = (c.favProxies||[]).map((p,i) => `
+    <div class="scraper-item">
+      <input type="url" value="${escH(p)}" placeholder="https://…?domain={domain}" 
+        onchange="updateFavProxy(${i},this.value)" onblur="updateFavProxy(${i},this.value)">
+      <button class="chip-x" onclick="removeFavProxy(${i})" style="font-size:14px;color:var(--red)">×</button>
+    </div>`).join('');
+}
+function addFavProxy() {
+  const v = $v('fav-proxy-new');
+  if (!v || !v.startsWith('http')) { toast('Gültige URL eingeben','w'); return; }
+  const c = getCfg();
+  const fps = c.favProxies||[];
+  fps.push(v);
+  LS.set('fav_proxies', fps);
+  $sv('fav-proxy-new','');
+  renderFavProxies();
+}
+function removeFavProxy(i) { const c=getCfg(); c.favProxies.splice(i,1); LS.set('fav_proxies',c.favProxies); renderFavProxies(); }
+function updateFavProxy(i, v) { const c=getCfg(); c.favProxies[i]=v; LS.set('fav_proxies',c.favProxies); }
+
+function renderArchRows() {
+  const c = getCfg();
+  const el = $('arch-rows');
+  if (!el) return;
+  el.innerHTML = (c.archiveRules||[]).map((r,i) => `
+    <div class="arch-row">
+      <input class="fi" type="text" value="${escH(r.domain||'*')}" placeholder="* oder domain.com"
+        onchange="updateArchRule(${i},'domain',this.value)" onblur="updateArchRule(${i},'domain',this.value)">
+      <input class="fi" type="url" value="${escH(r.url||'')}" placeholder="https://archive.is" style="flex:1"
+        onchange="updateArchRule(${i},'url',this.value)" onblur="updateArchRule(${i},'url',this.value)">
+      <button class="chip-x" onclick="removeArchRule(${i})" style="font-size:16px;color:var(--red);padding:0 4px">×</button>
+    </div>`).join('');
+}
+function addArchRow() { const c=getCfg(); (c.archiveRules||[]).push({domain:'',url:''}); LS.set('archive_rules',c.archiveRules); renderArchRows(); }
+function removeArchRule(i) { const c=getCfg(); c.archiveRules.splice(i,1); LS.set('archive_rules',c.archiveRules); renderArchRows(); }
+function updateArchRule(i,k,v) { const c=getCfg(); c.archiveRules[i][k]=v; LS.set('archive_rules',c.archiveRules); }
+
+function getArchiveUrl(domain) {
+  const c = getCfg();
+  const rules = c.archiveRules||[];
+  const specific = rules.find(r => r.domain && r.domain!=='*' && domain.includes(r.domain) && r.url);
+  if (specific) return specific.url;
+  const global = rules.find(r => r.domain==='*' && r.url);
+  if (global) return global.url;
+  return null;
+}
+
+// ╔══════════════════════════════════════════════════╗
+// ║  PROXY TESTING                                   ║
+// ╚══════════════════════════════════════════════════╝
+async function testMetaProxy() {
+  saveCfg();
+  const c = getCfg();
+  let proxyBase = '';
+  if (c.metaProxyMode==='nim') proxyBase = c.nimCorsUrl;
+  else if (c.metaProxyMode==='custom') proxyBase = c.metaProxyUrl;
+  else { toast('Kein Proxy konfiguriert (direkter Modus)','w'); return; }
+  if (!proxyBase || !proxyBase.startsWith('http')) { toast('Proxy-URL muss http:// oder https:// beginnen','e'); return; }
+
+  try {
+    const testUrl = `${proxyBase}/https://www.google.com`;
+    toast('Teste Proxy gegen google.com…','i',2000);
+    const res = await fetch(testUrl, { method:'HEAD', signal: AbortSignal.timeout(6000) });
+    const ach = res.headers.get('access-control-allow-headers') || '';
+    const acAllows = ach === '*' || ach.toLowerCase().includes('authorization');
+    const warn = $('meta-proxy-warn');
+    if (!acAllows) {
+      if (warn) { warn.textContent = `⚠ Der Proxy enthält "Authorization" nicht in Access-Control-Allow-Headers (aktuell: "${ach||'(kein Header)'}" ). Requests mit Auth-Header werden bald nicht mehr funktionieren.`; warn.classList.add('show'); }
+      toast('Proxy antwortet, aber Authorization fehlt in CORS-Headers','w',6000);
+    } else {
+      if (warn) warn.classList.remove('show');
+      toast('Proxy OK ✓ (Authorization in CORS-Headers enthalten)','s');
+    }
+  } catch(e) {
+    toast(`Proxy-Test fehlgeschlagen: ${e.message}`,'e',5000);
+  }
+}
+
+// ╔══════════════════════════════════════════════════╗
+// ║  BACKUP                                          ║
+// ╚══════════════════════════════════════════════════╝
+function exportBackup(type) {
+  const c = getCfg();
+  let data = {};
+  if (type==='config'||type==='all') {
+    data.config = {
+      laUrl: c.laUrl, nimModel: c.nimModel, nimUrlMode: c.nimUrlMode,
+      nimCorsUrl: c.nimCorsUrl, metaProxyMode: c.metaProxyMode, metaProxyUrl: c.metaProxyUrl,
+      scraperOrder: c.scraperOrder, scrapers: c.scrapers, favProxies: c.favProxies,
+      archiveRules: c.archiveRules, nsfwMode: c.nsfwMode
+      // Sensitive keys (tokens/api keys) intentionally omitted
+    };
+    data._note = 'API-Tokens & Keys wurden aus Sicherheitsgründen nicht exportiert.';
+  }
+  if (type==='linkace'||type==='all') {
+    data.linkaceData = { lists: S.lists, tags: S.tags };
+  }
+  data._exported = new Date().toISOString();
+  data._version = '2.0';
+
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `linkdrop-backup-${type}-${Date.now()}.json`;
+  a.click(); URL.revokeObjectURL(url);
+  toast(`${type} exportiert`,'s');
+}
+
+function importBackup(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.config) {
+        Object.entries(data.config).forEach(([k,v]) => {
+          const lsKey = k.replace(/([A-Z])/g, '_$1').toLowerCase();
+          if (typeof v === 'object') LS.set(lsKey, v);
+          else LS.set(lsKey, v);
+        });
+        toast('Konfiguration importiert','s');
+      }
+      if (data.linkaceData?.lists) { S.lists = data.linkaceData.lists; renderLALists(); }
+      if (data.linkaceData?.tags) { S.tags = data.linkaceData.tags; }
+      loadCfgToPanel(); updateStats();
+      toast('Import abgeschlossen','s');
+    } catch(err) { toast(`Import Fehler: ${err.message}`,'e',5000); }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function clearAllData() {
+  if (!confirm('Wirklich alle lokalen Daten löschen?')) return;
+  const keysToKeep = [];
+  Object.keys(localStorage).filter(k=>!keysToKeep.includes(k)).forEach(k=>localStorage.removeItem(k));
+  toast('Daten gelöscht — Seite wird neu geladen','w',2000);
+  setTimeout(()=>location.reload(),2000);
+}
+
+// ╔══════════════════════════════════════════════════╗
+// ║  DRAG & DROP / PASTE                             ║
+// ╚══════════════════════════════════════════════════╝
+let dragN = 0;
+document.addEventListener('dragenter', e => { e.preventDefault(); dragN++; $('dropzone').classList.add('drag-over'); $('drop-border').classList.add('show'); });
+document.addEventListener('dragleave', () => { dragN--; if(dragN<=0){dragN=0;$('dropzone').classList.remove('drag-over');$('drop-border').classList.remove('show');} });
+document.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect='copy'; });
+document.addEventListener('drop', e => {
+  e.preventDefault(); dragN=0;
+  $('dropzone').classList.remove('drag-over'); $('drop-border').classList.remove('show');
+  const text = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('text/uri-list') || '';
+  const urls = extractURLs(text);
+  if (urls.length) { urls.forEach(createCard); toast(`${urls.length} URL${urls.length>1?'s':''} erkannt`,'i'); }
+  else toast('Keine URL erkannt','e');
+});
+
+document.addEventListener('paste', e => {
+  const tag = document.activeElement?.tagName;
+  if (tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT') return;
+  e.preventDefault();
+  const text = e.clipboardData.getData('text/plain');
+  const urls = extractURLs(text);
+  if (urls.length) { urls.forEach(createCard); toast(`${urls.length} URL${urls.length>1?'s':''} eingefügt`,'i'); }
+  else if (text.trim()) toast('Kein URL erkannt','e');
+});
+
+function extractURLs(text) {
+  return [...new Set((text.match(/https?:\/\/[^\s"'<>()[\]{}|\\^`\x00-\x1F\x7F-\x9F]+/gi)||[]))];
+}
+
+// ╔══════════════════════════════════════════════════╗
+// ║  UTILS                                           ║
+// ╚══════════════════════════════════════════════════╝
+function getDomain(url) { try { return new URL(url).hostname.replace('www.',''); } catch { return url; } }
+function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+const delay = ms => new Promise(r=>setTimeout(r,ms));
+
+// ╔══════════════════════════════════════════════════╗
+// ║  INIT                                            ║
+// ╚══════════════════════════════════════════════════╝
+loadCfgToPanel();
+updateStats();
+updateNIMPreview();
+
+const ic = getCfg();
+if (ic.laUrl && ic.laToken) loadLinkAceData();
+else { $('d-la').className = 'ind-dot err'; }
+if (ic.nimKey) $('d-nim').className = 'ind-dot ok';
+</script>
+</body>
+</html>
