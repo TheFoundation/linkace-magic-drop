@@ -1,9 +1,240 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LINKDROP v5 — AI Bookmark Manager</title>
+<title>LINKDROP v2 — AI Bookmark Manager</title>
+
+<!-- ═══ BUILT-IN TRANSLATIONS ═══════════════════════════════════════════════
+     Add extra languages at  Settings → Language → Translation URL
+     Each file must be at:   {url}/translation_XY.json
+     Format: flat key/value JSON, same keys as below.
+     langname_XY  = name of THIS language as displayed in language XY
+ ════════════════════════════════════════════════════════════════════════════ -->
+<script type="application/json" id="translation-EN">
+{
+  "langname_EN": "English",
+  "langname_DE": "German",
+  "stat_lists": "Lists",
+  "stat_tags": "Tags",
+  "stat_today": "today",
+  "stat_queue": "in queue",
+  "queue_pending_pre": "NIM Queue:",
+  "queue_pending_suf": "pending",
+  "queue_hint": "Hover card → pauses · Click list/tag → prioritizes",
+  "empty_title": "Drop or paste links",
+  "empty_sub": "Drag URLs here or press <kbd>CTRL+V</kbd>",
+  "kbd_paste": "Paste",
+  "kbd_saveall": "Save all",
+  "kbd_panel": "Panel",
+  "btn_saveall": "SAVE ALL",
+  "btn_discardall": "Discard all",
+  "btn_close": "Close",
+  "btn_setup_proxy": "Set up proxy",
+  "btn_test_nim": "▶ Test NIM connection",
+  "btn_test_la": "▶ Test LinkAce connection",
+  "btn_test_proxy": "▶ Test meta proxy (google.com)",
+  "btn_reload_lists": "↺ Reload lists & tags",
+  "btn_create": "+ Create",
+  "btn_merge": "⊕ Merge duplicate lists",
+  "btn_export_config": "↓ Export configuration (JSON)",
+  "btn_export_la": "↓ Export LinkAce data (lists + tags)",
+  "btn_export_all": "↓ Export full backup",
+  "btn_clear_data": "✕ Delete all local data",
+  "btn_reload_langs": "↺ Reload languages from URL",
+  "panel_title": "Settings",
+  "tab_ai": "AI / NIM",
+  "tab_la": "LinkAce",
+  "tab_meta": "Meta",
+  "tab_fav": "Favicons",
+  "tab_arch": "Archive",
+  "tab_bak": "Backup",
+  "settings_btn": "SETTINGS",
+  "psec_nim_api_key__model": "NIM API Key & Model",
+  "psec_nim_endpoint_url": "NIM Endpoint URL",
+  "psec_nsfw_mode": "NSFW Mode",
+  "psec_connection": "Connection",
+  "psec_manage_lists": "Manage Lists",
+  "psec_metadata_fetch_proxy": "Metadata Fetch Proxy",
+  "psec_metadata_scraper_services": "Metadata Scraper Services",
+  "psec_custom_favicon_proxies": "Custom Favicon Proxies",
+  "psec_fallback_order": "Fallback Order",
+  "psec_archive_urls": "Archive URLs",
+  "psec_export": "Export",
+  "psec_import": "Import",
+  "psec_danger_zone": "Danger Zone",
+  "psec_language": "Language",
+  "lbl_api_key": "API Key",
+  "lbl_model": "Model",
+  "lbl_custom_model_id": "Custom Model ID",
+  "lbl_cors_proxy_base_url": "CORS Proxy Base URL",
+  "lbl_nim_url_preview": "NIM URL Preview",
+  "lbl_base_url": "Base URL",
+  "lbl_api_token": "API Token",
+  "lbl_api_version": "API Version",
+  "lbl_custom_meta_proxy_url": "Custom Meta Proxy URL",
+  "lbl_custom_favicon_proxies": "Custom Favicon Proxies",
+  "lbl_import_json_file": "Import JSON file",
+  "lbl_translation_url": "Translation URL",
+  "translation_url_hint": "Translations loaded from {url}/translation_XY.json",
+  "ph_new_list": "New list name…",
+  "cors_title": "CORS issues detected",
+  "cors_hint": "Go to <b>Settings → Meta</b> and configure your proxy.",
+  "toast_urls_pasted": "URL(s) pasted from clipboard",
+  "toast_no_url": "No URL recognized",
+  "toast_saved": "Saved",
+  "toast_save_fail": "Save failed",
+  "toast_la_connected": "LinkAce connected ✓",
+  "toast_nim_connected": "NIM API connected ✓",
+  "toast_merge_done": "Merge complete",
+  "lbl_save": "Save",
+  "lbl_discard": "Discard",
+  "lbl_lists": "Lists",
+  "lbl_tags": "Tags",
+  "lbl_analyzing": "ANALYZING",
+  "lbl_ready": "READY",
+  "lbl_saved": "SAVED",
+  "lbl_queued": "IN QUEUE",
+  "lbl_nim_err": "NIM ERR",
+  "lbl_cors_err": "CORS ERR",
+  "lbl_keep": "KEEP",
+  "lbl_merge_into": "MERGE INTO",
+  "btn_save_to_linkace": "↑ Save",
+  "btn_save_all_short": "SAVE ALL",
+  "btn_discard_short": "✕",
+  "btn_load_external": "👁 Load external",
+  "btn_nim_now": "⚡ NIM now",
+  "no_lists_loaded": "No lists loaded",
+  "no_lists": "No lists",
+  "ai_summary_label": "Summary",
+  "merge_modal_title": "Merge Lists",
+  "merge_no_dupes": "✓ No duplicate list names found.",
+  "merge_info": "duplicate group(s) found. The <b>first</b> entry per group is kept; all links are moved there, duplicates deleted.",
+  "merge_run": "⊕ Merge",
+  "merge_running": "…running",
+  "merge_done_log": "Done:",
+  "merge_links_moved": "links moved",
+  "merge_lists_deleted": "lists deleted",
+  "nsfw_on": "NSFW mode activated",
+  "nsfw_off": "NSFW mode deactivated",
+  "confirm_clear": "Really delete all local data?",
+  "import_done": "Import complete",
+  "config_exported": "Configuration exported",
+  "lists_loaded": "Lists and tags loaded"
+}
+</script>
+<script type="application/json" id="translation-DE">
+{
+  "langname_EN": "Englisch",
+  "langname_DE": "Deutsch",
+  "stat_lists": "Listen",
+  "stat_tags": "Tags",
+  "stat_today": "heute",
+  "stat_queue": "in Queue",
+  "queue_pending_pre": "NIM Queue:",
+  "queue_pending_suf": "ausstehend",
+  "queue_hint": "Hover über Karte → pausiert · Klick auf Liste/Tag → vorgezogen",
+  "empty_title": "Links ablegen oder einfügen",
+  "empty_sub": "Ziehe URLs hierher oder drücke <kbd>STRG+V</kbd>",
+  "kbd_paste": "Einfügen",
+  "kbd_saveall": "Alle speichern",
+  "kbd_panel": "Panel",
+  "btn_saveall": "ALLE SPEICHERN",
+  "btn_discardall": "Alle verwerfen",
+  "btn_close": "Schließen",
+  "btn_setup_proxy": "Proxy einrichten",
+  "btn_test_nim": "▶ NIM Verbindung testen",
+  "btn_test_la": "▶ LinkAce Verbindung testen",
+  "btn_test_proxy": "▶ Meta-Proxy testen (google.com)",
+  "btn_reload_lists": "↺ Listen & Tags neu laden",
+  "btn_create": "+ Erstellen",
+  "btn_merge": "⊕ Gleichnamige Listen zusammenführen",
+  "btn_export_config": "↓ Konfiguration exportieren (JSON)",
+  "btn_export_la": "↓ LinkAce-Daten exportieren (Listen + Tags)",
+  "btn_export_all": "↓ Vollständiges Backup exportieren",
+  "btn_clear_data": "✕ Alle lokalen Daten löschen",
+  "btn_reload_langs": "↺ Sprachen von URL neu laden",
+  "panel_title": "Einstellungen",
+  "tab_ai": "AI / NIM",
+  "tab_la": "LinkAce",
+  "tab_meta": "Meta",
+  "tab_fav": "Favicons",
+  "tab_arch": "Archiv",
+  "tab_bak": "Backup",
+  "settings_btn": "EINSTELLUNGEN",
+  "psec_nim_api_key__model": "NIM API Key & Modell",
+  "psec_nim_endpoint_url": "NIM Endpoint URL",
+  "psec_nsfw_mode": "NSFW-Modus",
+  "psec_connection": "Verbindung",
+  "psec_manage_lists": "Listen verwalten",
+  "psec_metadata_fetch_proxy": "Proxy für Metadaten-Abruf",
+  "psec_metadata_scraper_services": "Metadata Scraper Services",
+  "psec_custom_favicon_proxies": "Custom Favicon-Proxys",
+  "psec_fallback_order": "Fallback-Reihenfolge",
+  "psec_archive_urls": "Archiv-URLs",
+  "psec_export": "Export",
+  "psec_import": "Import",
+  "psec_danger_zone": "Gefahrenzone",
+  "psec_language": "Sprache",
+  "lbl_api_key": "API Key",
+  "lbl_model": "Modell",
+  "lbl_custom_model_id": "Custom Model ID",
+  "lbl_cors_proxy_base_url": "CORS-Proxy Base URL",
+  "lbl_nim_url_preview": "Vorschau NIM URL",
+  "lbl_base_url": "Base URL",
+  "lbl_api_token": "API Token",
+  "lbl_api_version": "API Version",
+  "lbl_custom_meta_proxy_url": "Custom Meta-Proxy URL",
+  "lbl_custom_favicon_proxies": "Custom Favicon-Proxys",
+  "lbl_import_json_file": "JSON-Datei importieren",
+  "lbl_translation_url": "Übersetzungs-URL",
+  "translation_url_hint": "Übersetzungen werden geladen von {url}/translation_XY.json",
+  "ph_new_list": "Neuer Listenname…",
+  "cors_title": "CORS-Probleme erkannt",
+  "cors_hint": "Gehe zu <b>Settings → Meta</b> und trage deinen Proxy ein.",
+  "toast_urls_pasted": "URL(s) aus Zwischenablage",
+  "toast_no_url": "Kein URL erkannt",
+  "toast_saved": "Gespeichert",
+  "toast_save_fail": "Speichern fehlgeschlagen",
+  "toast_la_connected": "LinkAce verbunden ✓",
+  "toast_nim_connected": "NIM API verbunden ✓",
+  "toast_merge_done": "Merge abgeschlossen",
+  "lbl_save": "Speichern",
+  "lbl_discard": "Verwerfen",
+  "lbl_lists": "Listen",
+  "lbl_tags": "Tags",
+  "lbl_analyzing": "ANALYSIERT",
+  "lbl_ready": "BEREIT",
+  "lbl_saved": "GESPEICHERT",
+  "lbl_queued": "IN QUEUE",
+  "lbl_nim_err": "NIM FEHLER",
+  "lbl_cors_err": "CORS FEHLER",
+  "lbl_keep": "BEHALTEN",
+  "lbl_merge_into": "ZUSAMMENFÜHREN",
+  "btn_save_to_linkace": "↑ Speichern",
+  "btn_save_all_short": "ALLE SPEICHERN",
+  "btn_discard_short": "✕",
+  "btn_load_external": "👁 Extern laden",
+  "btn_nim_now": "⚡ NIM jetzt",
+  "no_lists_loaded": "Keine Listen geladen",
+  "no_lists": "Keine Listen",
+  "ai_summary_label": "Beschreibung",
+  "merge_modal_title": "Listen zusammenführen",
+  "merge_no_dupes": "✓ Keine gleichnamigen Listen gefunden.",
+  "merge_info": "Gruppe(n) mit gleichnamigen Listen. Der <b>erste</b> Eintrag wird behalten, alle Links werden verschoben, Duplikate gelöscht.",
+  "merge_run": "⊕ Zusammenführen",
+  "merge_running": "…läuft",
+  "merge_done_log": "Fertig:",
+  "merge_links_moved": "Links verschoben",
+  "merge_lists_deleted": "Listen gelöscht",
+  "nsfw_on": "NSFW-Modus aktiviert",
+  "nsfw_off": "NSFW-Modus deaktiviert",
+  "confirm_clear": "Wirklich alle lokalen Daten löschen?",
+  "import_done": "Import abgeschlossen",
+  "config_exported": "exportiert",
+  "lists_loaded": "Listen und Tags geladen"
+}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -220,6 +451,15 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
 .arch-row .fi{font-size:11px;padding:5px 9px}
 .arch-row .fi:first-child{width:120px;flex-shrink:0}
 
+
+/* ── LANGUAGE SWITCHER ── */
+.lang-switcher{display:flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:3px 5px}
+.lang-btn{background:none;border:none;cursor:pointer;padding:2px 5px;border-radius:3px;font-family:var(--fm);font-size:10px;letter-spacing:.4px;color:var(--text3);display:flex;align-items:center;gap:4px;transition:all .15s;white-space:nowrap}
+.lang-btn:hover{background:var(--bg4);color:var(--text2)}
+.lang-btn.active{background:var(--cyan-dim);color:var(--cyan);border:1px solid var(--cyan)}
+.lang-btn .flag{width:16px;height:12px;border-radius:2px;flex-shrink:0;object-fit:cover}
+.lang-btn .flag-placeholder{width:16px;height:12px;border-radius:2px;background:var(--border2);display:inline-block;flex-shrink:0}
+
 /* scrollbar */
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 ::-webkit-scrollbar-thumb:hover{background:var(--text3)}
@@ -231,36 +471,37 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
   <header id="statusbar">
     <div class="logo"><div class="logo-dot"></div>LINKDROP</div>
     <div class="sdiv"></div>
-    <div class="stat-txt"><span id="s-lists">0</span> Listen · <span id="s-tags">0</span> Tags · <span id="s-saved">0</span> heute · <span id="s-q">0</span> in Queue</div>
+    <div class="stat-txt"><span id="s-lists">0</span> <span data-i18n="stat_lists">Lists</span> · <span id="s-tags">0</span> <span data-i18n="stat_tags">Tags</span> · <span id="s-saved">0</span> <span data-i18n="stat_today">today</span> · <span id="s-q">0</span> <span data-i18n="stat_queue">in queue</span></div>
     <div class="indicators">
       <div class="ind"><div class="ind-dot loading" id="d-la"></div><span>LinkAce</span></div>
       <div class="ind"><div class="ind-dot" id="d-nim"></div><span>NIM</span></div>
     </div>
     <div id="nsfw-wrap" style="display:none">
-      <div class="nsfw-badge" onclick="toggleNSFW()" title="NSFW-Modus: Externe Dienste werden nicht automatisch abgefragt" id="nsfw-badge">👁 NSFW</div>
+      <div class="nsfw-badge" onclick="toggleNSFW()" id="nsfw-badge">👁 NSFW</div>
     </div>
-    <button class="hdr-btn" onclick="openPanel('ai')">
+    <div class="lang-switcher" id="lang-switcher"></div>
+    <button class="hdr-btn" onclick="openPanel('ai')" data-i18n-title="settings_btn">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
-      SETTINGS
+      <span data-i18n="settings_btn">SETTINGS</span>
     </button>
   </header>
 
   <div id="queue-bar">
     <div class="q-spinner"></div>
-    <span>NIM Queue: <b id="q-count">0</b> ausstehend</span>
+    <span data-i18n="queue_pending_pre">NIM Queue:</span> <b id="q-count">0</b> <span data-i18n="queue_pending_suf">pending</span>
     <div class="queue-pill" id="q-current">–</div>
-    <span style="color:var(--text3);font-size:10px;margin-left:auto">Hover über Karte → pausiert · Klick auf Liste/Tag → vorgezogen</span>
+    <span style="color:var(--text3);font-size:10px;margin-left:auto"><span data-i18n="queue_hint">Hover card → pauses · Click list/tag → prioritizes</span></span>
   </div>
 
   <div id="dropzone">
     <div id="empty">
       <div class="e-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="28" height="28"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/><line x1="12" y1="12" x2="12" y2="18"/><line x1="9" y1="15" x2="15" y2="15"/></svg></div>
-      <div class="e-title">Links ablegen oder einfügen</div>
-      <div class="e-sub">Ziehe URLs hierher oder drücke <kbd>STRG+V</kbd></div>
+      <div class="e-title" data-i18n="empty_title">Drop or paste links</div>
+      <div class="e-sub" data-i18n="empty_sub">Drag URLs here or press <kbd>CTRL+V</kbd></div>
       <div class="kbdrow">
-        <div class="kbdi"><kbd>STRG+V</kbd> Einfügen</div>
-        <div class="kbdi"><kbd>STRG+S</kbd> Alle speichern</div>
-        <div class="kbdi"><kbd>ESC</kbd> Panel</div>
+        <div class="kbdi"><kbd>CTRL+V</kbd> <span data-i18n="kbd_paste">Paste</span></div>
+        <div class="kbdi"><kbd>CTRL+S</kbd> <span data-i18n="kbd_saveall">Save all</span></div>
+        <div class="kbdi"><kbd>ESC</kbd> <span data-i18n="kbd_panel">Panel</span></div>
       </div>
     </div>
     <div id="cards-grid"></div>
@@ -270,24 +511,24 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
 <!-- SETTINGS PANEL -->
 <aside id="panel">
   <div class="p-head">
-    <div class="p-title">⚙ Einstellungen</div>
+    <div class="p-title">⚙ <span data-i18n="panel_title">Settings</span></div>
     <button class="btn-cls" onclick="closePanel()">×</button>
   </div>
   <div class="p-tabs">
-    <button class="p-tab active" data-tab="ai" onclick="switchTab('ai')">AI / NIM</button>
-    <button class="p-tab" data-tab="la" onclick="switchTab('la')">LinkAce</button>
-    <button class="p-tab" data-tab="meta" onclick="switchTab('meta')">Meta</button>
-    <button class="p-tab" data-tab="fav" onclick="switchTab('fav')">Favicons</button>
-    <button class="p-tab" data-tab="arch" onclick="switchTab('arch')">Archiv</button>
-    <button class="p-tab" data-tab="bak" onclick="switchTab('bak')">Backup</button>
+    <button class="p-tab active" data-tab="ai" onclick="switchTab('ai')" data-i18n="tab_ai">AI / NIM</button>
+    <button class="p-tab" data-tab="la" onclick="switchTab('la')" data-i18n="tab_la">LinkAce</button>
+    <button class="p-tab" data-tab="meta" onclick="switchTab('meta')" data-i18n="tab_meta">Meta</button>
+    <button class="p-tab" data-tab="fav" onclick="switchTab('fav')" data-i18n="tab_fav">Favicons</button>
+    <button class="p-tab" data-tab="arch" onclick="switchTab('arch')" data-i18n="tab_arch">Archive</button>
+    <button class="p-tab" data-tab="bak" onclick="switchTab('bak')" data-i18n="tab_bak">Backup</button>
   </div>
   <div class="p-panes">
 
     <!-- AI / NIM -->
     <div class="p-pane active" id="pane-ai">
-      <div class="psec">NIM API Key & Modell</div>
-      <div class="fg"><label class="fl">API Key</label><input class="fi" id="nim-key" type="password" placeholder="nvapi-..." autocomplete="off"></div>
-      <div class="fg"><label class="fl">Modell</label>
+      <div class="psec" data-i18n="psec_nim_api_key__model">NIM API Key & Model</div>
+      <div class="fg"><label class="fl" data-i18n="lbl_api_key">API Key</label><input class="fi" id="nim-key" type="password" placeholder="nvapi-..." autocomplete="off"></div>
+      <div class="fg"><label class="fl" data-i18n="lbl_model">Model</label>
         <select class="fi" id="nim-model">
           <option value="meta/llama-3.1-70b-instruct">meta/llama-3.1-70b-instruct</option>
           <option value="meta/llama-3.3-70b-instruct">meta/llama-3.3-70b-instruct</option>
@@ -297,11 +538,11 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
         </select>
       </div>
       <div class="fg" id="nim-custom-model-wrap" style="display:none">
-        <label class="fl">Custom Model ID</label>
+        <label class="fl" data-i18n="lbl_custom_model_id">Custom Model ID</label>
         <input class="fi" id="nim-custom-model" type="text" placeholder="vendor/model-name">
       </div>
 
-      <div class="psec">NIM Endpoint URL</div>
+      <div class="psec" data-i18n="psec_nim_endpoint_url">NIM Endpoint URL</div>
       <div class="radio-group" id="nim-url-radios">
         <label class="radio-opt checked">
           <input type="radio" name="nim-url-mode" value="direct" checked> Direkt (https://integrate.api.nvidia.com)
@@ -312,7 +553,7 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
       </div>
       <div id="nim-cors-wrap" style="display:none">
         <div class="fg">
-          <label class="fl">CORS-Proxy Base URL</label>
+          <label class="fl" data-i18n="lbl_cors_proxy_base_url">CORS Proxy Base URL</label>
           <input class="fi" id="nim-cors-url" type="url" placeholder="http://myproxy:1234">
         </div>
         <div class="fg" style="margin-top:-8px;display:flex;align-items:center;gap:9px">
@@ -325,10 +566,10 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
         <div id="nim-cors-warn" class="warn-txt"></div>
       </div>
       <div class="fg">
-        <label class="fl">Vorschau NIM URL</label>
+        <label class="fl" data-i18n="lbl_nim_url_preview">NIM URL Preview</label>
         <div class="preview-box" id="nim-url-preview">–</div>
       </div>
-      <button class="btn-t" onclick="testNIM()">▶ NIM Verbindung testen</button>
+      <button class="btn-t" onclick="testNIM()"><span data-i18n="btn_test_nim">▶ Test NIM connection</span></button>
 
       <div class="psec" style="margin-top:22px">NSFW-Modus</div>
       <div class="fg" style="display:flex;align-items:center;gap:9px">
@@ -339,11 +580,11 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
 
     <!-- LINKACE -->
     <div class="p-pane" id="pane-la">
-      <div class="psec">Verbindung</div>
-      <div class="fg"><label class="fl">Base URL</label><input class="fi" id="la-url" type="url" placeholder="https://linkace.example.com"></div>
-      <div class="fg"><label class="fl">API Token</label><input class="fi" id="la-token" type="password" placeholder="Bearer Token" autocomplete="off"></div>
+      <div class="psec" data-i18n="psec_connection">Connection</div>
+      <div class="fg"><label class="fl" data-i18n="lbl_base_url">Base URL</label><input class="fi" id="la-url" type="url" placeholder="https://linkace.example.com"></div>
+      <div class="fg"><label class="fl" data-i18n="lbl_api_token">API Token</label><input class="fi" id="la-token" type="password" placeholder="Bearer Token" autocomplete="off"></div>
       <div class="fg">
-        <label class="fl">API Version</label>
+        <label class="fl" data-i18n="lbl_api_version">API Version</label>
         <div class="radio-group" style="margin-bottom:0">
           <label class="radio-opt checked">
             <input type="radio" name="la-api-version" value="v1" checked> v1 (LinkAce 1.x)
@@ -353,24 +594,24 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
           </label>
         </div>
       </div>
-      <button class="btn-t" onclick="testLA()">▶ LinkAce Verbindung testen</button>
+      <button class="btn-t" onclick="testLA()"><span data-i18n="btn_test_la">▶ Test LinkAce connection</span></button>
       <div id="la-save-debug" class="warn-txt" style="margin-top:8px;font-family:var(--fm);font-size:10px;word-break:break-all;display:none"></div>
 
-      <div class="psec">Listen verwalten</div>
+      <div class="psec" data-i18n="psec_manage_lists">Manage Lists</div>
       <div class="create-list-row">
-        <input class="fi" id="new-list-name" type="text" placeholder="Neuer Listenname…" onkeydown="if(event.key==='Enter')createListLA()">
-        <button class="btn-add" onclick="createListLA()">+ Erstellen</button>
+        <input class="fi" id="new-list-name" type="text" data-i18n-placeholder="ph_new_list" placeholder="New list name…" onkeydown="if(event.key==='Enter')createListLA()">
+        <button class="btn-add" onclick="createListLA()"><span data-i18n="btn_create">+ Create</span></button>
       </div>
       <div class="list-items" id="la-list-items">
         <div style="font-size:11px;color:var(--text3);text-align:center;padding:10px">Noch keine Listen geladen</div>
       </div>
-      <button class="btn-t" onclick="loadLinkAceData()">↺ Listen & Tags neu laden</button>
-      <button class="btn-t" id="btn-merge" onclick="openMergeModal()" style="margin-top:6px;border-color:var(--amber);color:var(--amber);display:none">⊕ Gleichnamige Listen zusammenführen</button>
+      <button class="btn-t" onclick="loadLinkAceData()"><span data-i18n="btn_reload_lists">↺ Reload lists & tags</span></button>
+      <button class="btn-t" id="btn-merge" onclick="openMergeModal()" style="margin-top:6px;border-color:var(--amber);color:var(--amber);display:none"><span data-i18n="btn_merge">⊕ Merge duplicate lists</span></button>
     </div>
 
     <!-- META SCRAPING -->
     <div class="p-pane" id="pane-meta">
-      <div class="psec">Proxy für Metadaten-Abruf</div>
+      <div class="psec" data-i18n="psec_metadata_fetch_proxy">Metadata Fetch Proxy</div>
       <div class="radio-group" id="meta-proxy-radios">
         <label class="radio-opt checked">
           <input type="radio" name="meta-proxy-mode" value="none" checked> Kein Proxy (direkter Fetch)
@@ -384,7 +625,7 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
       </div>
       <div id="meta-custom-proxy-wrap" style="display:none">
         <div class="fg">
-          <label class="fl">Custom Meta-Proxy URL</label>
+          <label class="fl" data-i18n="lbl_custom_meta_proxy_url">Custom Meta Proxy URL</label>
           <input class="fi" id="meta-proxy-url" type="url" placeholder="https://meta-proxy.example.com">
         </div>
         <div class="fg" style="margin-top:-8px">
@@ -395,9 +636,9 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
         </div>
       </div>
       <div id="meta-proxy-warn" class="warn-txt"></div>
-      <button class="btn-t" onclick="testMetaProxy()">▶ Meta-Proxy testen (google.com)</button>
+      <button class="btn-t" onclick="testMetaProxy()"><span data-i18n="btn_test_proxy">▶ Test meta proxy (google.com)</span></button>
 
-      <div class="psec">Metadata Scraper Services</div>
+      <div class="psec" data-i18n="psec_metadata_scraper_services">Metadata Scraper Services</div>
       <div class="radio-group" style="margin-bottom:10px">
         <label class="radio-opt" id="scraper-order-first-opt">
           <input type="radio" name="scraper-order" value="first"> Scraper zuerst abfragen
@@ -416,14 +657,14 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
 
     <!-- FAVICONS -->
     <div class="p-pane" id="pane-fav">
-      <div class="psec">Custom Favicon-Proxys</div>
+      <div class="psec" data-i18n="psec_custom_favicon_proxies">Custom Favicon Proxies</div>
       <div class="info-txt" style="margin-bottom:12px">Eigene Proxys werden zuerst abgefragt.<br>Platzhalter: <code style="color:var(--cyan)">{domain}</code> und <code style="color:var(--cyan)">{url}</code></div>
       <div id="fav-proxy-list"></div>
       <div style="display:flex;gap:7px;margin-bottom:16px">
         <input class="fi" id="fav-proxy-new" type="url" placeholder="https://favicon.example.com?domain={domain}" style="flex:1">
         <button class="btn-add" onclick="addFavProxy()">+</button>
       </div>
-      <div class="psec">Fallback-Reihenfolge</div>
+      <div class="psec" data-i18n="psec_fallback_order">Fallback Order</div>
       <div class="info-txt">Nach eigenen Proxys wird in dieser Reihenfolge abgefragt:</div>
       <div style="display:flex;flex-direction:column;gap:5px;margin-top:8px;font-size:11px;color:var(--text3)">
         <div class="list-item">1. Google Favicons (google.com/s2/favicons)</div>
@@ -435,7 +676,7 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
 
     <!-- ARCHIV -->
     <div class="p-pane" id="pane-arch">
-      <div class="psec">Archiv-URLs</div>
+      <div class="psec" data-i18n="psec_archive_urls">Archive URLs</div>
       <div class="info-txt" style="margin-bottom:12px">Wenn Metadaten unzureichend sind, wird ein "Archiv"-Button angezeigt. <code style="color:var(--cyan)">*</code> gilt global.</div>
       <div id="arch-rows"></div>
       <button class="btn-add" onclick="addArchRow()" style="width:100%;justify-content:center;margin-top:4px">+ Eintrag hinzufügen</button>
@@ -448,22 +689,22 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
 
     <!-- BACKUP -->
     <div class="p-pane" id="pane-bak">
-      <div class="psec">Export</div>
-      <button class="btn-t" onclick="exportBackup('config')">↓ Konfiguration exportieren (JSON)</button>
-      <button class="btn-t" onclick="exportBackup('linkace')">↓ LinkAce-Daten exportieren (Listen + Tags)</button>
-      <button class="btn-t" onclick="exportBackup('all')">↓ Vollständiges Backup exportieren</button>
+      <div class="psec" data-i18n="psec_export">Export</div>
+      <button class="btn-t" onclick="exportBackup('config')"><span data-i18n="btn_export_config">↓ Export configuration (JSON)</span></button>
+      <button class="btn-t" onclick="exportBackup('linkace')"><span data-i18n="btn_export_la">↓ Export LinkAce data (lists + tags)</span></button>
+      <button class="btn-t" onclick="exportBackup('all')"><span data-i18n="btn_export_all">↓ Export full backup</span></button>
 
-      <div class="psec">Import</div>
+      <div class="psec" data-i18n="psec_import">Import</div>
       <div class="fg">
-        <label class="fl">JSON-Datei importieren</label>
+        <label class="fl" data-i18n="lbl_import_json_file">Import JSON file</label>
         <input class="fi" type="file" id="import-file" accept=".json" onchange="importBackup(this)">
       </div>
       <div class="warn-txt show" id="bak-warn" style="display:block">
         ⚠ Beim Import werden bestehende Einstellungen überschrieben.
       </div>
 
-      <div class="psec">Gefahrenzone</div>
-      <button class="btn-t btn-danger" onclick="clearAllData()">✕ Alle lokalen Daten löschen</button>
+      <div class="psec" data-i18n="psec_danger_zone">Danger Zone</div>
+      <button class="btn-t btn-danger" onclick="clearAllData()"><span data-i18n="btn_clear_data">✕ Delete all local data</span></button>
     </div>
   </div>
 </aside>
@@ -471,22 +712,22 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
 <!-- BOTTOM BAR -->
 <div id="btm-bar">
   <span id="btm-cnt" style="font-size:11px;color:var(--text2)">0 bereit</span>
-  <button class="btn btn-sva" onclick="saveAll()">↑ ALLE SPEICHERN</button>
+  <button class="btn btn-sva" onclick="saveAll()">↑ <span data-i18n="btn_saveall">SAVE ALL</span></button>
 </div>
-<button id="disc-all" onclick="discardAll()">✕ Alle verwerfen</button>
+<button id="disc-all" onclick="discardAll()">✕ <span data-i18n="btn_discardall">Discard all</span></button>
 <div id="drop-border"></div>
 
 <!-- CORS MODAL -->
 <div class="modal-overlay" id="cors-modal">
   <div class="modal">
-    <h2>⚠ CORS-Probleme erkannt</h2>
+    <h2>⚠ <span data-i18n="cors_title">CORS issues detected</span></h2>
     <p>Es wurden bereits <b id="cors-count">3</b> fehlgeschlagene Meta-Abrufe aufgrund von CORS-Fehlern registriert.<br><br>
     Ohne einen CORS-Proxy können externe Metadaten und möglicherweise auch NIM-Anfragen aus dem Browser nicht funktionieren.<br><br>
     <b style="color:var(--cyan)">Es wird dringend empfohlen, einen CORS-Proxy einzurichten.</b><br>
-    Gehe zu <b>Settings → Meta</b> und trage deinen Proxy ein.</p>
+    <span data-i18n="cors_hint">Go to <b>Settings → Meta</b> and configure your proxy.</span></p>
     <div class="modal-actions">
-      <button class="btn btn-disc" onclick="document.getElementById('cors-modal').classList.remove('open')">Schließen</button>
-      <button class="btn btn-sv" onclick="document.getElementById('cors-modal').classList.remove('open');openPanel('meta')">Proxy einrichten</button>
+      <button class="btn btn-disc" onclick="document.getElementById('cors-modal').classList.remove('open')" data-i18n="btn_close">Close</button>
+      <button class="btn btn-sv" onclick="document.getElementById('cors-modal').classList.remove('open');openPanel('meta')" data-i18n="btn_setup_proxy">Set up proxy</button>
     </div>
   </div>
 </div>
@@ -502,6 +743,144 @@ const LS = {
   set: (k,v) => localStorage.setItem(k, typeof v === 'object' ? JSON.stringify(v) : v),
   getJ: (k,d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d } catch { return d } }
 };
+
+// ╔══════════════════════════════════════════════════╗
+// ║  I18N ENGINE                                     ║
+// ╚══════════════════════════════════════════════════╝
+const I18N = {
+  lang: 'EN',
+  translations: {},   // { EN: {...}, DE: {...}, XX: {...} }
+  flags: {},          // { EN: 'data:image/svg+xml;base64,...', DE: '...' }
+  extraLangs: [],     // ISO codes loaded from remote
+
+  // Load built-in translations from <script type="application/json"> tags
+  loadBuiltIn() {
+    document.querySelectorAll('script[type="application/json"][id^="translation-"]').forEach(el => {
+      const code = el.id.replace('translation-', '');
+      try { this.translations[code] = JSON.parse(el.textContent); }
+      catch(e) { console.warn('i18n parse error', code, e); }
+    });
+  },
+
+  // t(key, vars) – main translation function
+  t(key, vars = {}) {
+    const pool = this.translations[this.lang] || this.translations['EN'] || {};
+    let val = pool[key] ?? this.translations['EN']?.[key] ?? key;
+    for (const [k, v] of Object.entries(vars)) val = val.replaceAll(`{${k}}`, v);
+    return val;
+  },
+
+  // Apply all data-i18n attributes in the DOM
+  applyDOM() {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.dataset.i18n;
+      el.innerHTML = this.t(key);
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+      el.placeholder = this.t(el.dataset.i18nPlaceholder);
+    });
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+      el.title = this.t(el.dataset.i18nTitle);
+    });
+    document.documentElement.lang = this.lang.toLowerCase();
+    document.title = 'LINKDROP — AI Bookmark Manager';
+  },
+
+  // Set language and re-render
+  set(code) {
+    if (!this.translations[code]) { console.warn('No translation for', code); return; }
+    this.lang = code;
+    LS.set('lang', code);
+    this.applyDOM();
+    renderLangSwitcher();
+    // Re-render all open cards so badge labels update
+    for (const id of S.cards.keys()) renderCard(id);
+    updateStats();
+  },
+
+  // Fetch country.json from translation URL for flags
+  async loadFlags() {
+    const url = (LS.get('translation_url') || '').replace(/\/$/, '');
+    if (!url || location.protocol === 'file:') return;
+    try {
+      const res = await fetch(`${url}/country.json`, { signal: AbortSignal.timeout(4000) });
+      if (res.ok) {
+        this.flags = await res.json();
+        renderLangSwitcher();
+      }
+    } catch {}
+  },
+
+  // Load a single remote translation
+  async loadRemote(code) {
+    const url = (LS.get('translation_url') || '').replace(/\/$/, '');
+    if (!url) return false;
+    try {
+      const res = await fetch(`${url}/translation_${code.toUpperCase()}.json`, { signal: AbortSignal.timeout(5000) });
+      if (!res.ok) return false;
+      const data = await res.json();
+      this.translations[code.toUpperCase()] = data;
+      if (!this.extraLangs.includes(code.toUpperCase())) this.extraLangs.push(code.toUpperCase());
+      return true;
+    } catch { return false; }
+  }
+};
+
+function getFlagImg(code) {
+  const flag = I18N.flags[code];
+  if (flag) return `<img class="flag" src="${flag}" alt="${code}">`;
+  // Inline SVG fallbacks for EN and DE
+  const fallbacks = {
+    EN: `<svg class="flag" viewBox="0 0 60 40" xmlns="http://www.w3.org/2000/svg"><rect width="60" height="40" fill="#012169"/><path d="M0,0 L60,40 M60,0 L0,40" stroke="white" stroke-width="8"/><path d="M0,0 L60,40 M60,0 L0,40" stroke="#C8102E" stroke-width="5"/><path d="M30,0 V40 M0,20 H60" stroke="white" stroke-width="12"/><path d="M30,0 V40 M0,20 H60" stroke="#C8102E" stroke-width="7"/></svg>`,
+    DE: `<svg class="flag" viewBox="0 0 60 40" xmlns="http://www.w3.org/2000/svg"><rect width="60" height="14" fill="#000"/><rect y="13" width="60" height="14" fill="#DD0000"/><rect y="26" width="60" height="14" fill="#FFCE00"/></svg>`
+  };
+  return fallbacks[code] || `<span class="flag-placeholder"></span>`;
+}
+
+function renderLangSwitcher() {
+  const el = document.getElementById('lang-switcher');
+  if (!el) return;
+  const allCodes = [...new Set([...Object.keys(I18N.translations), ...I18N.extraLangs])];
+  el.innerHTML = allCodes.map(code => {
+    const tr = I18N.translations[code] || {};
+    const nameKey = `langname_${code}`;
+    // Name: use current language's translation of this lang name, fallback to EN, fallback to code
+    const name = (I18N.translations[I18N.lang]?.[nameKey]) || (I18N.translations['EN']?.[nameKey]) || code;
+    return `<button class="lang-btn ${I18N.lang === code ? 'active' : ''}" onclick="I18N.set('${code}')" title="${name}">
+      ${getFlagImg(code)} ${code}
+    </button>`;
+  }).join('');
+  // Also update extra-lang-list in settings panel
+  renderExtraLangList();
+}
+
+function renderExtraLangList() {
+  const el = document.getElementById('extra-lang-list');
+  if (!el) return;
+  const builtIn = ['EN', 'DE'];
+  const extras = I18N.extraLangs.filter(c => !builtIn.includes(c));
+  if (!extras.length) { el.innerHTML = ''; return; }
+  el.innerHTML = extras.map(code => {
+    const tr = I18N.translations[code] || {};
+    const name = tr[`langname_${code}`] || code;
+    return `<div class="list-item">${getFlagImg(code)} <span>${name} (${code})</span></div>`;
+  }).join('');
+}
+
+async function reloadExtraLangs() {
+  saveCfg();
+  const url = (LS.get('translation_url') || '').replace(/\/$/, '');
+  if (!url) { toast('No translation URL configured', 'w'); return; }
+  await I18N.loadFlags();
+  // Save the extra langs for next session
+  LS.set('extra_langs', I18N.extraLangs);
+  renderLangSwitcher();
+  toast('Languages reloaded', 's');
+}
+
+// i18n-aware versions of dynamic strings used in JS
+function t(key, vars={}) { return I18N.t(key, vars); }
+
 
 function getCfg() {
   return {
@@ -523,6 +902,8 @@ function getCfg() {
     favProxies: LS.getJ('fav_proxies', []),
     archiveRules: LS.getJ('archive_rules', [{ domain: '*', url: 'https://archive.is' }]),
     nsfwMode: LS.get('nsfw_mode')==='1',
+    translationUrl: LS.get('translation_url')||'',
+    lang: LS.get('lang')||'EN',
     savedToday: parseInt(LS.get('saved_today')||'0'),
     savedDate: LS.get('saved_date')||''
   };
@@ -545,6 +926,7 @@ function saveCfg() {
   LS.set('meta_proxy_auth_val', $v('meta-proxy-auth-val'));
   LS.set('scraper_order', document.querySelector('[name=scraper-order]:checked')?.value||'last');
   LS.set('nsfw_mode', $('nsfw-mode')?.checked?'1':'0');
+  LS.set('translation_url', $v('translation-url'));
   updateNIMPreview();
   updateNSFWBadge();
 }
@@ -584,6 +966,7 @@ function loadCfgToPanel() {
     r.closest('.radio-opt')?.classList.toggle('checked', r.checked);
   });
   if ($('nsfw-mode')) $('nsfw-mode').checked = c.nsfwMode;
+  $sv('translation-url', c.translationUrl);
   updateNIMPreview();
   renderScrapers();
   renderFavProxies();
@@ -691,7 +1074,7 @@ function toggleNSFW() {
   LS.set('nsfw_mode', getCfg().nsfwMode ? '0' : '1');
   if ($('nsfw-mode')) $('nsfw-mode').checked = !getCfg().nsfwMode;
   updateNSFWBadge();
-  toast('NSFW-Modus ' + (getCfg().nsfwMode ? 'aktiviert' : 'deaktiviert'), 'w');
+  toast(getCfg().nsfwMode ? t('nsfw_on') : t('nsfw_off'), 'w');
 }
 
 // ╔══════════════════════════════════════════════════╗
@@ -962,7 +1345,7 @@ async function loadLinkAceData() {
 
 async function testLA() {
   saveCfg();
-  try { await laReq('/lists?per_page=1'); toast('LinkAce verbunden ✓','s'); await loadLinkAceData(); }
+  try { await laReq('/lists?per_page=1'); toast(t('toast_la_connected'),'s'); await loadLinkAceData(); }
   catch(e) { toast(`LinkAce Fehler: ${e.message}`,'e',5000); }
 }
 
@@ -985,7 +1368,7 @@ function renderLALists() {
   const el = $('la-list-items');
   if (!el) return;
   if (!S.lists.length) {
-    el.innerHTML = '<div style="font-size:11px;color:var(--text3);text-align:center;padding:10px">Keine Listen</div>';
+    el.innerHTML = `<div style="font-size:11px;color:var(--text3);text-align:center;padding:10px">${t('no_lists')}</div>`;
     const mb = $('btn-merge'); if (mb) mb.style.display = 'none';
     return;
   }
@@ -1001,7 +1384,7 @@ function renderLALists() {
   el.innerHTML = S.lists.map(l => {
     const isDupe = nameCounts[l.name.trim().toLowerCase()] > 1;
     return `<div class="list-item" ${isDupe ? 'style="border-color:var(--amber)"' : ''}>
-      <span title="${escH(l.name)}" style="${isDupe ? 'color:var(--amber)' : ''}">${escH(l.name)}${isDupe ? ' <span style="font-size:9px;opacity:.7">(Duplikat)</span>' : ''}</span>
+      <span title="${escH(l.name)}" style="${isDupe ? 'color:var(--amber)' : ''}">${escH(l.name)}${isDupe ? ' <span style="font-size:9px;opacity:.7">(Duplicate)</span>' : ''}</span>
       <span style="color:var(--text3);font-size:10px">#${l.id}</span>
     </div>`;
   }).join('');
@@ -1038,7 +1421,7 @@ async function testNIM() {
     }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     dot.className = 'ind-dot ok';
-    toast('NIM API verbunden ✓','s');
+    toast(t('toast_nim_connected'),'s');
   } catch(e) {
     dot.className = 'ind-dot err';
     toast(`NIM Fehler: ${e.message}`,'e',5000);
@@ -1283,10 +1666,10 @@ function renderCard(id) {
 
   // Status badge
   const badges = [];
-  if (card.status === 'queued') badges.push('<span class="badge queued">IN QUEUE</span>');
-  else if (card.status === 'ready' && !card.saved) badges.push('<span class="badge ready">BEREIT</span>');
-  else if (card.saved) badges.push('<span class="badge saved-b">✓ GESPEICHERT</span>');
-  if (card.nimError) badges.push(`<span class="badge cors-err" title="${escH(card.nimError)}">NIM ERR</span>`);
+  if (card.status === 'queued') badges.push(`<span class="badge queued">${t('lbl_queued')}</span>`);
+  else if (card.status === 'ready' && !card.saved) badges.push(`<span class="badge ready">${t('lbl_ready')}</span>`);
+  else if (card.saved) badges.push(`<span class="badge saved-b">✓ ${t('lbl_saved')}</span>`);
+  if (card.nimError) badges.push(`<span class="badge cors-err" title="${escH(card.nimError)}">${t('lbl_nim_err')}</span>`);
   langs.forEach(l => badges.push(`<span class="badge lang">${escH(l)}</span>`));
 
   // List chips
@@ -1312,7 +1695,7 @@ function renderCard(id) {
   }).join('');
 
   // Summary from metadata (not NIM)
-  const summary = desc ? `<div class="ai-label" style="font-size:9px;letter-spacing:1.4px;color:var(--text3);text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:6px"><span style="color:var(--text3)">■</span> Beschreibung</div><div class="ai-summary">${escH(desc.slice(0,300))}</div>` : '';
+  const summary = desc ? `<div class="ai-label" style="font-size:9px;letter-spacing:1.4px;color:var(--text3);text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:6px"><span style="color:var(--text3)">■</span> ${t('ai_summary_label')}</div><div class="ai-summary">${escH(desc.slice(0,300))}</div>` : '';
 
   // Footer buttons
   const isNSFW = getCfg().nsfwMode && !card.externalLoaded;
@@ -1320,11 +1703,11 @@ function renderCard(id) {
   const inQueue = S.nimQueue.some(x=>x.id===id);
   let footerBtns = `
     <button class="btn btn-sv" onclick="saveCard('${id}')" ${isAnalyzing?'disabled':''} aria-label="In LinkAce speichern">
-      ${card.saved ? '✓ Gespeichert' : '↑ Speichern'}
+      ${card.saved ? '✓ ' + t('lbl_saved') : t('btn_save_to_linkace')}
     </button>
-    <button class="btn btn-disc" onclick="discardCard('${id}')">✕</button>`;
-  if (isNSFW) footerBtns += `<button class="btn btn-ext" onclick="loadExternal('${id}')">👁 Extern laden</button>`;
-  if (inQueue && !isAnalyzing) footerBtns += `<button class="btn btn-nim-now" onclick="promoteCard('${id}')">⚡ NIM jetzt</button>`;
+    <button class="btn btn-disc" onclick="discardCard('${id}')">${t('btn_discard_short')}</button>`;
+  if (isNSFW) footerBtns += `<button class="btn btn-ext" onclick="loadExternal('${id}')">${t('btn_load_external')}</button>`;
+  if (inQueue && !isAnalyzing) footerBtns += `<button class="btn btn-nim-now" onclick="promoteCard('${id}')">${t('btn_nim_now')}</button>`;
   if (archiveUrl) footerBtns += `<button class="btn btn-arch" onclick="window.open('${archiveUrl}/${encodeURIComponent(card.url)}','_blank')">📦 Archiv</button>`;
 
   // Favicon placeholder
@@ -1342,9 +1725,9 @@ function renderCard(id) {
     <div class="card-body">
       ${summary}
       ${isAnalyzing ? `<div class="ai-summary"><div class="typing-dots"><span></span><span></span><span></span></div> Analysiere…</div>` : ''}
-      <div class="sec-lbl">Listen</div>
+      <div class="sec-lbl">${t('lbl_lists')}</div>
       <div class="chips" id="${id}-lists">${listChips}</div>
-      <div class="sec-lbl">Tags</div>
+      <div class="sec-lbl">${t('lbl_tags')}</div>
       <div class="chips" id="${id}-tags">
         ${tagChips}
         <input class="tag-in" placeholder="+ Tag" onkeydown="handleTagKD(event,'${id}')" aria-label="Tag hinzufügen">
@@ -1436,12 +1819,12 @@ async function saveCard(id) {
     LS.set('saved_today', S.savedToday);
     renderCard(id);
     updateStats();
-    toast(`Gespeichert: ${getDomain(card.url)}`,'s');
+    toast(`${t('toast_saved')}: ${getDomain(card.url)}`,'s');
   } catch(e) {
     card.status = 'ready';
     $(id)?.classList.remove('saving');
     renderCard(id);
-    toast(`Speichern fehlgeschlagen: ${e.message}`,'e',8000);
+    toast(`${t('toast_save_fail')}: ${e.message}`,'e',8000);
     // Show in debug box in settings panel
     const dbg = $('la-save-debug');
     if (dbg) { dbg.style.display='block'; dbg.textContent = `Letzter Fehler: ${e.message}`; }
@@ -1450,7 +1833,7 @@ async function saveCard(id) {
 
 async function saveAll() {
   const ready = [...S.cards.entries()].filter(([,d])=>d.status==='ready'&&!d.saved);
-  if (!ready.length) { toast('Keine Links zum Speichern','i'); return; }
+  if (!ready.length) { toast('No links to save','i'); return; }
   for (const [id] of ready) { await saveCard(id); await delay(250); }
 }
 
@@ -1613,7 +1996,7 @@ function exportBackup(type) {
   const a = document.createElement('a');
   a.href = url; a.download = `linkdrop-backup-${type}-${Date.now()}.json`;
   a.click(); URL.revokeObjectURL(url);
-  toast(`${type} exportiert`,'s');
+  toast(`${type} ${t('config_exported')}`,'s');
 }
 
 function importBackup(input) {
@@ -1642,7 +2025,7 @@ function importBackup(input) {
 }
 
 function clearAllData() {
-  if (!confirm('Wirklich alle lokalen Daten löschen?')) return;
+  if (!confirm(t('confirm_clear'))) return;
   const keysToKeep = [];
   Object.keys(localStorage).filter(k=>!keysToKeep.includes(k)).forEach(k=>localStorage.removeItem(k));
   toast('Daten gelöscht — Seite wird neu geladen','w',2000);
@@ -1671,7 +2054,7 @@ document.addEventListener('paste', e => {
   e.preventDefault();
   const text = e.clipboardData.getData('text/plain');
   const urls = extractURLs(text);
-  if (urls.length) { urls.forEach(createCard); toast(`${urls.length} URL${urls.length>1?'s':''} eingefügt`,'i'); }
+  if (urls.length) { urls.forEach(createCard); toast(`${urls.length} URL${urls.length>1?'s':''} ${t('kbd_paste').toLowerCase()}`,'i'); }
   else if (text.trim()) toast('Kein URL erkannt','e');
 });
 
@@ -1715,14 +2098,14 @@ function openMergeModal() {
   runBtn.textContent = '⊕ Zusammenführen';
 
   if (!dupes.length) {
-    info.innerHTML = '<span style="color:var(--green)">✓ Keine gleichnamigen Listen gefunden.</span>';
+    info.innerHTML = `<span style="color:var(--green)">${t('merge_no_dupes')}</span>`;
     groupsEl.innerHTML = '';
     runBtn.style.display = 'none';
     $('merge-modal').classList.add('open');
     return;
   }
 
-  info.innerHTML = `<b style="color:var(--amber)">${dupes.length}</b> Gruppe${dupes.length>1?'n':''} mit gleichnamigen Listen gefunden. Der <b>erste</b> Eintrag je Gruppe wird behalten, alle Links der anderen werden dorthin verschoben, dann werden die Duplikate gelöscht.`;
+  info.innerHTML = `<b style="color:var(--amber)">${dupes.length}</b> ${t('merge_info')}`;
 
   groupsEl.innerHTML = dupes.map(group => {
     const keeper = group[0];
@@ -1757,7 +2140,7 @@ async function runMerge() {
   const closeBtn = $('merge-close-btn');
 
   runBtn.disabled = true;
-  runBtn.textContent = '…läuft';
+  runBtn.textContent = t('merge_running');
   progressEl.style.display = 'block';
   progressEl.innerHTML = '';
   closeBtn.disabled = true;
@@ -1834,19 +2217,41 @@ async function runMerge() {
   }
 
   log('');
-  log(`<b>Fertig:</b> ${totalMoved} Links verschoben, ${totalDeleted} Listen gelöscht${errors ? `, <span style="color:var(--red)">${errors} Fehler</span>` : ' ✓'}`, 'var(--text)');
+  log(`<b>${t('merge_done_log')}</b> ${totalMoved} ${t('merge_links_moved')}, ${totalDeleted} ${t('merge_lists_deleted')}${errors ? `, <span style="color:var(--red)">${errors} errors</span>` : ' ✓'}`, 'var(--text)');
 
   runBtn.style.display = 'none';
   closeBtn.disabled = false;
 
   // Reload lists to reflect changes
   await loadLinkAceData();
-  toast(`Merge abgeschlossen: ${totalMoved} Links, ${totalDeleted} Listen entfernt`, errors ? 'w' : 's', 5000);
+  toast(`${t('toast_merge_done')}: ${totalMoved} ${t('merge_links_moved')}, ${totalDeleted} ${t('merge_lists_deleted')}`, errors ? 'w' : 's', 5000);
 }
 
 // ╔══════════════════════════════════════════════════╗
 // ║  INIT                                            ║
 // ╚══════════════════════════════════════════════════╝
+// ── i18n bootstrap ─────────────────────────────────────────
+I18N.loadBuiltIn();
+{
+  const savedLang = LS.get('lang') || 'EN';
+  if (I18N.translations[savedLang]) I18N.lang = savedLang;
+  else I18N.lang = 'EN';
+}
+I18N.applyDOM();
+renderLangSwitcher();
+// Async: load flags and extra languages from remote
+(async () => {
+  await I18N.loadFlags();
+  const tUrl = (LS.get('translation_url')||'').replace(/\/$/,'');
+  if (tUrl && location.protocol !== 'file:') {
+    // Try to reload any previously loaded extra langs
+    const savedExtras = LS.getJ('extra_langs', []);
+    for (const code of savedExtras) await I18N.loadRemote(code);
+    renderLangSwitcher();
+  }
+})();
+// ────────────────────────────────────────────────────────────
+
 loadCfgToPanel();
 updateStats();
 updateNIMPreview();
@@ -1860,13 +2265,13 @@ if (ic.nimKey) $('d-nim').className = 'ind-dot ok';
 <!-- MERGE MODAL -->
 <div class="modal-overlay" id="merge-modal">
   <div class="modal" style="max-width:500px">
-    <h2 style="color:var(--amber)">⊕ Listen zusammenführen</h2>
+    <h2 style="color:var(--amber)">⊕ <span data-i18n="merge_modal_title">Merge Lists</span></h2>
     <p id="merge-info" style="margin-bottom:12px"></p>
     <div id="merge-groups" style="max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;margin-bottom:16px"></div>
     <div id="merge-progress" style="display:none;font-size:11px;color:var(--text2);background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:10px;font-family:var(--fm);line-height:1.9;max-height:180px;overflow-y:auto"></div>
     <div class="modal-actions" style="margin-top:0">
       <button class="btn btn-disc" id="merge-close-btn" onclick="document.getElementById('merge-modal').classList.remove('open')">Schließen</button>
-      <button class="btn btn-sva" id="merge-run-btn" onclick="runMerge()">⊕ Zusammenführen</button>
+      <button class="btn btn-sva" id="merge-run-btn" onclick="runMerge()"><span data-i18n="merge_run">⊕ Merge</span></button>
     </div>
   </div>
 </div>
