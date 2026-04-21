@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LINKDROP v2 — AI Bookmark Manager</title>
+<title>LINKDROP v3 — AI Bookmark Manager</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -342,19 +342,7 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
       <div class="psec">Verbindung</div>
       <div class="fg"><label class="fl">Base URL</label><input class="fi" id="la-url" type="url" placeholder="https://linkace.example.com"></div>
       <div class="fg"><label class="fl">API Token</label><input class="fi" id="la-token" type="password" placeholder="Bearer Token" autocomplete="off"></div>
-      <div class="fg">
-        <label class="fl">API Version</label>
-        <div class="radio-group" style="margin-bottom:0">
-          <label class="radio-opt checked">
-            <input type="radio" name="la-api-version" value="v1" checked> v1 (LinkAce 1.x)
-          </label>
-          <label class="radio-opt">
-            <input type="radio" name="la-api-version" value="v2"> v2 (LinkAce 2.x)
-          </label>
-        </div>
-      </div>
       <button class="btn-t" onclick="testLA()">▶ LinkAce Verbindung testen</button>
-      <div id="la-save-debug" class="warn-txt" style="margin-top:8px;font-family:var(--fm);font-size:10px;word-break:break-all;display:none"></div>
 
       <div class="psec">Listen verwalten</div>
       <div class="create-list-row">
@@ -506,7 +494,6 @@ function getCfg() {
   return {
     laUrl: (LS.get('la_url')||'').replace(/\/$/,''),
     laToken: LS.get('la_token')||'',
-    laApiVersion: LS.get('la_api_version')||'v1',
     nimKey: LS.get('nim_key')||'',
     nimModel: LS.get('nim_model')||'meta/llama-3.1-70b-instruct',
     nimCustomModel: LS.get('nim_custom_model')||'',
@@ -530,7 +517,6 @@ function getCfg() {
 function saveCfg() {
   LS.set('la_url', $v('la-url'));
   LS.set('la_token', $v('la-token'));
-  LS.set('la_api_version', document.querySelector('[name=la-api-version]:checked')?.value||'v1');
   LS.set('nim_key', $v('nim-key'));
   const model = $v('nim-model');
   LS.set('nim_model', model);
@@ -552,10 +538,6 @@ function loadCfgToPanel() {
   const c = getCfg();
   $sv('la-url', c.laUrl);
   $sv('la-token', c.laToken);
-  document.querySelectorAll('[name=la-api-version]').forEach(r => {
-    r.checked = r.value === c.laApiVersion;
-    r.closest('.radio-opt')?.classList.toggle('checked', r.checked);
-  });
   $sv('nim-key', c.nimKey);
   $sv('nim-model', c.nimModel);
   $sv('nim-custom-model', c.nimCustomModel);
@@ -919,24 +901,14 @@ function loadFavicon(imgEl, url) {
 // ╚══════════════════════════════════════════════════╝
 async function laReq(path, method='GET', body=null) {
   const c = getCfg();
-  if (!c.laUrl || !c.laToken) throw new Error('LinkAce nicht konfiguriert. Bitte Einstellungen öffnen.');
-  const apiVer = c.laApiVersion || 'v1';
+  if (!c.laUrl || !c.laToken) throw new Error('LinkAce nicht konfiguriert');
   const opts = {
     method,
     headers: { 'Authorization': `Bearer ${c.laToken}`, 'Content-Type': 'application/json', 'Accept': 'application/json' }
   };
   if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(`${c.laUrl}/api/${apiVer}${path}`, opts);
-  if (!res.ok) {
-    let detail = '';
-    try {
-      const errBody = await res.json();
-      if (errBody.message) detail = errBody.message;
-      else if (errBody.errors) detail = Object.values(errBody.errors).flat().join(' | ');
-      else detail = JSON.stringify(errBody).slice(0, 300);
-    } catch { detail = res.statusText; }
-    throw new Error(`HTTP ${res.status}: ${detail}`);
-  }
+  const res = await fetch(`${c.laUrl}/api/v1${path}`, opts);
+  if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
   return res.json();
 }
 
@@ -1395,19 +1367,13 @@ async function saveCard(id) {
   card.status = 'saving';
   $(id)?.classList.add('saving');
   try {
-    const c = getCfg();
-    const isV2 = (c.laApiVersion || 'v1') === 'v2';
-    const payload = {
+    await laReq('/links', 'POST', {
       url: card.url,
-      title: card.meta?.title || '',
-      description: card.meta?.description || '',
-      lists: [...card.selectedLists],           // correct field name (not list_ids)
-      tags: [...card.selectedTags],              // plain strings (not objects)
-    };
-    // v1 uses is_private (bool), v2 uses visibility (int: 1=public, 2=private)
-    if (isV2) payload.visibility = 1;
-    else payload.is_private = false;
-    await laReq('/links', 'POST', payload);
+      title: card.meta?.title || undefined,
+      list_ids: [...card.selectedLists],
+      tags: [...card.selectedTags].map(t=>({name:t})),
+      is_private: false
+    });
     card.saved = true;
     card.status = 'ready';
     S.savedToday++;
@@ -1418,11 +1384,7 @@ async function saveCard(id) {
   } catch(e) {
     card.status = 'ready';
     $(id)?.classList.remove('saving');
-    renderCard(id);
-    toast(`Speichern fehlgeschlagen: ${e.message}`,'e',8000);
-    // Show in debug box in settings panel
-    const dbg = $('la-save-debug');
-    if (dbg) { dbg.style.display='block'; dbg.textContent = `Letzter Fehler: ${e.message}`; }
+    toast(`Fehler: ${e.message}`,'e',5000);
   }
 }
 
