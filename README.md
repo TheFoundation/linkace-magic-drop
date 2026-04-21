@@ -1,6 +1,8 @@
 # linkdrop
 Automated linkace assistant 
 
+![alt text](screen.png)
+
 * loads links via drag n drop or paste
 * fancy UI 
 * ability to use NVIDIA NIM for auto selection of lists and tags

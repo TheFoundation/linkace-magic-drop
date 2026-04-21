@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LINKDROP v7 — AI Bookmark Manager</title>
+<title>LINKDROP v8 — AI Bookmark Manager</title>
 
 <!-- ═══ BUILT-IN TRANSLATIONS ═══════════════════════════════════════════════
      Add extra languages at  Settings → Language → Translation URL
@@ -49,6 +49,18 @@
   "tab_fav": "Favicons",
   "tab_arch": "Archive",
   "tab_bak": "Backup",
+  "tab_la_lists": "Listen",
+  "tab_la_tags": "Tags",
+  "tab_la_conn": "LinkAce",
+  "lbl_duplicate": "Duplikat",
+  "psec_manage_tags": "Tags verwalten",
+  "btn_discarddone": "Gespeicherte verwerfen",
+  "tab_la_lists": "Lists",
+  "tab_la_tags": "Tags",
+  "tab_la_conn": "LinkAce",
+  "lbl_duplicate": "Duplicate",
+  "psec_manage_tags": "Manage Tags",
+  "btn_discarddone": "Discard saved",
   "settings_btn": "SETTINGS",
   "psec_nim_api_key__model": "NIM API Key & Model",
   "psec_nim_endpoint_url": "NIM Endpoint URL",
@@ -308,7 +320,9 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .link-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;animation:cin .35s cubic-bezier(.16,1,.3,1) both;transition:border-color .2s,box-shadow .2s;position:relative}
 @keyframes cin{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:none}}
 .link-card:hover{border-color:var(--border2)}
-.link-card.saved{border-color:var(--green);box-shadow:0 0 18px var(--green-dim)}
+.link-card.saved{border-color:var(--amber);box-shadow:0 0 14px var(--amber-dim)}
+.link-card.err-422{border-color:#3b82f6;box-shadow:0 0 14px #3b82f618}
+.link-card.err-other{border-color:var(--red);box-shadow:0 0 14px var(--red-dim)}
 .link-card.hovered-q{border-color:var(--amber)!important;box-shadow:0 0 12px var(--amber-dim)!important}
 .card-head{padding:13px 14px 11px;display:flex;align-items:flex-start;gap:10px;border-bottom:1px solid var(--border)}
 .card-fav{width:18px;height:18px;border-radius:3px;flex-shrink:0;margin-top:2px;object-fit:contain}
@@ -323,6 +337,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .badge.err-b{background:var(--red-dim);color:var(--red);border:1px solid var(--red)}
 .badge.queued{background:var(--amber-dim);color:var(--amber);border:1px solid var(--amber)}
 .badge.cors-err{background:var(--red-dim);color:var(--red);border:1px solid var(--red)}
+.badge.dup-422{background:#1e3a5f;color:#60a5fa;border:1px solid #3b82f6}
 .badge.lang{background:#1a1a2e;color:#818cf8;border:1px solid #3730a3;font-size:8px}
 .card-body{padding:12px 14px}
 .ai-summary{font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:12px;min-height:18px}
@@ -355,6 +370,8 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .btn-arch:hover{border-color:var(--cyan);color:var(--cyan)}
 .btn-nim-now{background:var(--violet-dim);border:1px solid var(--violet);color:#c4b5fd;font-size:10px;padding:4px 9px}
 .btn-nim-now:hover{background:var(--violet);color:#fff}
+.btn-retry{background:transparent;border:1px solid var(--amber);color:var(--amber);font-size:10px;padding:4px 9px}
+.btn-retry:hover{background:var(--amber);color:#000}
 .typing-dots{display:inline-flex;gap:4px;align-items:center}
 .typing-dots span{width:5px;height:5px;border-radius:50%;background:var(--violet);animation:td 1.2s ease-in-out infinite}
 .typing-dots span:nth-child(2){animation-delay:.2s}
@@ -416,9 +433,7 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
 /* ── SAVE ALL / DISMISS BAR ── */
 #btm-bar{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:9px 14px;display:flex;align-items:center;gap:10px;z-index:150;transition:transform .3s cubic-bezier(.16,1,.3,1),opacity .3s;opacity:0;box-shadow:0 8px 32px #00000088;backdrop-filter:blur(12px)}
 #btm-bar.vis{transform:translateX(-50%) translateY(0);opacity:1}
-#disc-all{position:fixed;bottom:22px;left:22px;background:transparent;border:1px solid var(--border2);color:var(--text3);padding:7px 13px;border-radius:6px;cursor:pointer;font-family:var(--fm);font-size:11px;z-index:150;transition:all .2s;display:none;align-items:center;gap:5px}
-#disc-all:hover{border-color:var(--red);color:var(--red)}
-#disc-all.vis{display:flex}
+
 
 /* ── TOASTS ── */
 #toasts{position:fixed;top:56px;right:18px;z-index:9000;display:flex;flex-direction:column;gap:7px;pointer-events:none;max-width:320px}
@@ -451,6 +466,20 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
 .arch-row .fi{font-size:11px;padding:5px 9px}
 .arch-row .fi:first-child{width:120px;flex-shrink:0}
 
+
+
+/* ── LIST PICKER ── */
+.list-picker-wrap{position:relative;display:inline-flex;align-items:center}
+.list-more-btn{font-size:11px;padding:3px 9px;border-radius:4px;cursor:pointer;border:1px dashed var(--border2);color:var(--text3);background:transparent;font-family:var(--fm);transition:all .15s}
+.list-more-btn:hover{border-color:var(--cyan);color:var(--cyan)}
+.list-dropdown{position:absolute;top:calc(100% + 4px);left:0;min-width:240px;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;z-index:500;box-shadow:0 8px 24px #00000088;padding:6px}
+.list-dropdown input{width:100%;background:var(--bg4);border:1px solid var(--border);border-radius:4px;padding:5px 9px;font-family:var(--fm);font-size:11px;color:var(--text);outline:none;margin-bottom:5px}
+.list-dropdown input:focus{border-color:var(--cyan)}
+.list-dropdown-items{max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:3px}
+.list-dd-item{font-size:11px;padding:4px 8px;border-radius:3px;cursor:pointer;color:var(--text2);transition:background .1s;display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list-dd-item:hover{background:var(--bg4);color:var(--text)}
+.list-dd-item.sel{color:var(--cyan);background:var(--cyan-dim)}
+.list-dd-item .dd-check{width:12px;height:12px;flex-shrink:0;color:var(--cyan)}
 
 /* ── LANGUAGE SWITCHER ── */
 .lang-switcher{display:flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:3px 5px}
@@ -515,8 +544,10 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
     <button class="btn-cls" onclick="closePanel()">×</button>
   </div>
   <div class="p-tabs">
-    <button class="p-tab active" data-tab="ai" onclick="switchTab('ai')" data-i18n="tab_ai">AI / NIM</button>
-    <button class="p-tab" data-tab="la" onclick="switchTab('la')" data-i18n="tab_la">LinkAce</button>
+    <button class="p-tab active" data-tab="la-lists" onclick="switchTab('la-lists')" data-i18n="tab_la_lists">Lists</button>
+    <button class="p-tab" data-tab="la-tags" onclick="switchTab('la-tags')" data-i18n="tab_la_tags">Tags</button>
+    <button class="p-tab" data-tab="la-conn" onclick="switchTab('la-conn')" data-i18n="tab_la_conn">LinkAce</button>
+    <button class="p-tab" data-tab="ai" onclick="switchTab('ai')" data-i18n="tab_ai">AI / NIM</button>
     <button class="p-tab" data-tab="meta" onclick="switchTab('meta')" data-i18n="tab_meta">Meta</button>
     <button class="p-tab" data-tab="fav" onclick="switchTab('fav')" data-i18n="tab_fav">Favicons</button>
     <button class="p-tab" data-tab="arch" onclick="switchTab('arch')" data-i18n="tab_arch">Archive</button>
@@ -578,8 +609,37 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
       </div>
     </div>
 
-    <!-- LINKACE -->
-    <div class="p-pane" id="pane-la">
+    <!-- LINKACE LISTS -->
+    <div class="p-pane active" id="pane-la-lists">
+      <div class="psec" data-i18n="psec_manage_lists">Manage Lists</div>
+      <div class="create-list-row">
+        <input class="fi" id="new-list-name" type="text" data-i18n-placeholder="ph_new_list" placeholder="New list name…" onkeydown="if(event.key==='Enter')createListLA()">
+        <button class="btn-add" onclick="createListLA()"><span data-i18n="btn_create">+ Create</span></button>
+      </div>
+      <div class="list-items" id="la-list-items">
+        <div style="font-size:11px;color:var(--text3);text-align:center;padding:10px">No lists loaded</div>
+      </div>
+      <button class="btn-t" onclick="loadLinkAceData()"><span data-i18n="btn_reload_lists">↺ Reload lists & tags</span></button>
+      <button class="btn-t" id="btn-merge" onclick="openMergeModal()" style="margin-top:6px;border-color:var(--amber);color:var(--amber);display:none"><span data-i18n="btn_merge">⊕ Merge duplicate lists</span></button>
+    </div>
+
+    <!-- LINKACE TAGS -->
+    <div class="p-pane" id="pane-la-tags">
+      <div class="psec" data-i18n="psec_manage_tags">Manage Tags</div>
+      <div class="create-list-row">
+        <input class="fi" id="new-tag-name" type="text" placeholder="New tag name…" onkeydown="if(event.key==='Enter')createTagLA()">
+        <button class="btn-add" onclick="createTagLA()"><span data-i18n="btn_create">+ Create</span></button>
+      </div>
+      <div style="margin-bottom:8px">
+        <input class="fi" id="tag-search" type="text" placeholder="🔍 Search tags…" oninput="renderLATags()" style="font-size:11px">
+      </div>
+      <div class="list-items" id="la-tag-items" style="max-height:340px;overflow-y:auto">
+        <div style="font-size:11px;color:var(--text3);text-align:center;padding:10px">No tags loaded</div>
+      </div>
+    </div>
+
+    <!-- LINKACE CONNECTION -->
+    <div class="p-pane" id="pane-la-conn">
       <div class="psec" data-i18n="psec_connection">Connection</div>
       <div class="fg"><label class="fl" data-i18n="lbl_base_url">Base URL</label><input class="fi" id="la-url" type="url" placeholder="https://linkace.example.com"></div>
       <div class="fg"><label class="fl" data-i18n="lbl_api_token">API Token</label><input class="fi" id="la-token" type="password" placeholder="Bearer Token" autocomplete="off"></div>
@@ -596,17 +656,6 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
       </div>
       <button class="btn-t" onclick="testLA()"><span data-i18n="btn_test_la">▶ Test LinkAce connection</span></button>
       <div id="la-save-debug" class="warn-txt" style="margin-top:8px;font-family:var(--fm);font-size:10px;word-break:break-all;display:none"></div>
-
-      <div class="psec" data-i18n="psec_manage_lists">Manage Lists</div>
-      <div class="create-list-row">
-        <input class="fi" id="new-list-name" type="text" data-i18n-placeholder="ph_new_list" placeholder="New list name…" onkeydown="if(event.key==='Enter')createListLA()">
-        <button class="btn-add" onclick="createListLA()"><span data-i18n="btn_create">+ Create</span></button>
-      </div>
-      <div class="list-items" id="la-list-items">
-        <div style="font-size:11px;color:var(--text3);text-align:center;padding:10px">Noch keine Listen geladen</div>
-      </div>
-      <button class="btn-t" onclick="loadLinkAceData()"><span data-i18n="btn_reload_lists">↺ Reload lists & tags</span></button>
-      <button class="btn-t" id="btn-merge" onclick="openMergeModal()" style="margin-top:6px;border-color:var(--amber);color:var(--amber);display:none"><span data-i18n="btn_merge">⊕ Merge duplicate lists</span></button>
     </div>
 
     <!-- META SCRAPING -->
@@ -714,7 +763,10 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
   <span id="btm-cnt" style="font-size:11px;color:var(--text2)">0 bereit</span>
   <button class="btn btn-sva" onclick="saveAll()">↑ <span data-i18n="btn_saveall">SAVE ALL</span></button>
 </div>
-<button id="disc-all" onclick="discardAll()">✕ <span data-i18n="btn_discardall">Discard all</span></button>
+<div id="disc-btns" style="position:fixed;bottom:22px;left:22px;display:none;gap:6px;z-index:150;">
+  <button class="disc-btn" id="disc-all" onclick="discardAll()" style="background:transparent;border:1px solid var(--border2);color:var(--text3);padding:7px 13px;border-radius:6px;cursor:pointer;font-family:var(--fm);font-size:11px;transition:all .2s;" onmouseenter="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseleave="this.style.borderColor='var(--border2)';this.style.color='var(--text3)'">✕ <span data-i18n="btn_discardall">Discard all</span></button>
+  <button class="disc-btn" id="disc-done" onclick="discardDone()" style="background:transparent;border:1px solid var(--border2);color:var(--text3);padding:7px 13px;border-radius:6px;cursor:pointer;font-family:var(--fm);font-size:11px;transition:all .2s;" onmouseenter="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseleave="this.style.borderColor='var(--border2)';this.style.color='var(--text3)'">✓ <span data-i18n="btn_discarddone">Discard saved</span></button>
+</div>
 <div id="drop-border"></div>
 
 <!-- CORS MODAL -->
@@ -996,7 +1048,7 @@ function toast(msg, type='i', dur=3000) {
   setTimeout(() => { el.classList.add('out'); setTimeout(()=>el.remove(),350) }, dur);
 }
 
-function openPanel(tab='ai') {
+function openPanel(tab='la-lists') {
   $('panel').classList.add('open');
   $('app').classList.add('panel-open');
   switchTab(tab);
@@ -1335,6 +1387,7 @@ async function loadLinkAceData() {
     toast(`${S.lists.length} Listen & ${S.tags.length} Tags geladen`,'s');
     updateStats();
     renderLALists();
+    renderLATags();
     // Re-render all cards to reflect new lists
     for (const id of S.cards.keys()) renderCard(id);
   } catch(e) {
@@ -1362,6 +1415,37 @@ async function createListLA() {
     toast(`Liste "${name}" erstellt`,'s');
     updateStats();
   } catch(e) { toast(`Liste erstellen: ${e.message}`,'e',5000); }
+}
+
+
+async function createTagLA() {
+  const name = $v('new-tag-name');
+  if (!name) { toast('Enter tag name', 'w'); return; }
+  try {
+    const res = await laReq('/tags', 'POST', { name });
+    const newTag = res.data || res;
+    S.tags.push(newTag);
+    $sv('new-tag-name', '');
+    renderLATags();
+    toast(`Tag "${name}" created`, 's');
+    updateStats();
+  } catch(e) { toast(`Create tag: ${e.message}`, 'e', 5000); }
+}
+
+function renderLATags() {
+  const el = $('la-tag-items');
+  if (!el) return;
+  const query = ($v('tag-search')||'').toLowerCase();
+  const filtered = query ? S.tags.filter(t => t.name.toLowerCase().includes(query)) : S.tags;
+  if (!filtered.length) {
+    el.innerHTML = `<div style="font-size:11px;color:var(--text3);text-align:center;padding:10px">${query ? 'No results' : 'No tags loaded'}</div>`;
+    return;
+  }
+  el.innerHTML = filtered.map(tg => `
+    <div class="list-item">
+      <span title="${escH(tg.name)}">${escH(tg.name)}</span>
+      <span style="color:var(--text3);font-size:10px">#${tg.id}</span>
+    </div>`).join('');
 }
 
 function renderLALists() {
@@ -1533,24 +1617,35 @@ async function runNIMForCard(cardId) {
   dot.className = 'ind-dot loading';
 
   try {
-    const listsInfo = S.lists.map(l => `ID ${l.id}: "${l.name}"`).join(', ');
-    const tagsInfo = S.tags.slice(0,60).map(t=>t.name).join(', ');
     const langs = card.meta?.langs?.join(', ') || '';
 
-    const prompt = `Analysiere diesen Bookmark und schlage passende LinkAce-Listen und Tags vor.
+    // Merged array: lists have type:"list" with id, tags have type:"tag" without id
+    // If a list and tag share the same name, the model may select both — that is fine.
+    const candidates = [
+      ...S.lists.map(l => ({ type: 'list', id: l.id, name: l.name })),
+      ...S.tags.slice(0, 60).map(tg => ({ type: 'tag', name: tg.name }))
+    ];
+
+    const prompt = `You are a bookmark categorization assistant. Analyze the bookmark below and suggest which lists and tags it belongs to from the provided candidates array.
 
 URL: ${card.url}
-Titel: ${card.meta?.title || '(unbekannt)'}
-Programmiersprachen/Frameworks erkannt: ${langs || 'keine'}
-StackOverflow-Site: ${card.meta?.isSOSite ? 'ja' : 'nein'}
+Title: ${card.meta?.title || '(unknown)'}
+Description: ${card.meta?.description?.slice(0,400) || '(none)'}
+Detected languages/frameworks: ${langs || 'none'}
+Stack Overflow site: ${card.meta?.isSOSite ? 'yes' : 'no'}
 
-Verfügbare Listen: ${listsInfo || 'keine'}
-Verfügbare Tags: ${tagsInfo || 'keine'}
+Candidates (JSON array):
+${JSON.stringify(candidates)}
 
-Antworte NUR als valides JSON ohne Markdown:
-{"suggested_lists":[{"id":<number>,"name":"<string>","reason":"<kurz>"}],"suggested_tags":["<tag>"]}
+Rules:
+- Only use list IDs that exist in the candidates array.
+- Tags may be new (not in candidates) if highly relevant — especially programming languages.
+- Prefer programming language tags derived from the title/description.
+- If a list and a tag have the same name and both fit, select both.
+- Max 5 lists, max 8 tags.
 
-Regeln: Nur existierende Listen-IDs verwenden. Tags dürfen neu sein. Programmiersprachen bevorzugt als Tags. Maximal 5 Listen, 8 Tags.`;
+Respond ONLY with valid JSON, no markdown, no explanation:
+{"suggested_lists":[{"id":<number>,"name":"<string>","reason":"<short>"}],"suggested_tags":["<tag>"]}`;
 
     const endpoint = getNIMEndpoint();
     const headers = { 'Content-Type':'application/json', 'Authorization':`Bearer ${c.nimKey}` };
@@ -1598,7 +1693,8 @@ function createCard(url) {
     id, url, meta: null, status: 'queued',
     selectedLists: new Set(), selectedTags: new Set(),
     aiSuggestion: null, nimError: null, nimSkipped: false,
-    externalLoaded: false, manuallyEdited: false, saved: false
+    externalLoaded: false, manuallyEdited: false, saved: false,
+    saveError: null, saveErrorMsg: null, metaError: null
   };
   S.cards.set(id, card);
   renderCard(id);
@@ -1606,11 +1702,13 @@ function createCard(url) {
   // Start meta fetch
   fetchMeta(url).then(meta => {
     card.meta = meta;
-    // Pre-select lists by title match
     preSelectLists(card);
     card.title = meta.title;
+    // Mark metaError if we only got a URL-derived fallback title and no description
+    if (!meta.description && S.corsErrCount > 0) {
+      card.metaError = 'Metadata may be incomplete (CORS)';
+    }
     renderCard(id);
-    // Enqueue NIM (unless NSFW)
     if (!getCfg().nsfwMode) {
       card.status = 'queued';
       renderCard(id);
@@ -1642,6 +1740,24 @@ function preSelectLists(card) {
   }
 }
 
+function getTopLists(card) {
+  // Returns up to 42 lists sorted by: selected first, then usage count desc, then name asc
+  const usage = LS.getJ('list_usage', {});
+  const sorted = [...S.lists].sort((a, b) => {
+    const aSel = card.selectedLists.has(a.id) ? 1 : 0;
+    const bSel = card.selectedLists.has(b.id) ? 1 : 0;
+    if (aSel !== bSel) return bSel - aSel;
+    return (usage[b.id] || 0) - (usage[a.id] || 0) || a.name.localeCompare(b.name);
+  });
+  return { top: sorted.slice(0, 42), rest: sorted.slice(42) };
+}
+
+function bumpListUsage(listId) {
+  const usage = LS.getJ('list_usage', {});
+  usage[listId] = (usage[listId] || 0) + 1;
+  LS.set('list_usage', usage);
+}
+
 function renderCard(id) {
   const card = S.cards.get(id);
   if (!card) return;
@@ -1657,6 +1773,12 @@ function renderCard(id) {
     grid.prepend(el);
   }
 
+  // Set error class
+  el.classList.remove('saved','err-422','err-other');
+  if (card.saved) el.classList.add('saved');
+  else if (card.saveError === 422) el.classList.add('err-422');
+  else if (card.saveError) el.classList.add('err-other');
+
   const domain = getDomain(card.url);
   const meta = card.meta;
   const ttl = meta?.title || card.title || domain;
@@ -1667,50 +1789,80 @@ function renderCard(id) {
   // Status badge
   const badges = [];
   if (card.status === 'queued') badges.push(`<span class="badge queued">${t('lbl_queued')}</span>`);
-  else if (card.status === 'ready' && !card.saved) badges.push(`<span class="badge ready">${t('lbl_ready')}</span>`);
+  else if (card.status === 'ready' && !card.saved && !card.saveError) badges.push(`<span class="badge ready">${t('lbl_ready')}</span>`);
   else if (card.saved) badges.push(`<span class="badge saved-b">✓ ${t('lbl_saved')}</span>`);
+  if (card.saveError === 422) badges.push(`<span class="badge dup-422" title="${card.saveErrorMsg||''}">⊕ ${t('lbl_duplicate')}</span>`);
+  else if (card.saveError && card.saveError !== 422) badges.push(`<span class="badge err-b" title="${escH(card.saveErrorMsg||'')}">✕ ${card.saveError}</span>`);
   if (card.nimError) badges.push(`<span class="badge cors-err" title="${escH(card.nimError)}">${t('lbl_nim_err')}</span>`);
+  if (card.metaError) badges.push(`<span class="badge cors-err" title="${escH(card.metaError)}">META ERR</span>`);
   langs.forEach(l => badges.push(`<span class="badge lang">${escH(l)}</span>`));
 
-  // List chips
-  const listChips = S.lists.length === 0 ? '<span style="font-size:11px;color:var(--text3)">Keine Listen geladen</span>'
-    : S.lists.map(l => {
+  // List chips — top 42 + dropdown for rest
+  let listChipsHTML = '';
+  if (S.lists.length === 0) {
+    listChipsHTML = `<span style="font-size:11px;color:var(--text3)">${t('no_lists_loaded')}</span>`;
+  } else {
+    const { top, rest } = getTopLists(card);
+    listChipsHTML = top.map(l => {
       const isSel = card.selectedLists.has(l.id);
       const isAI = card.aiSuggestion?.suggested_lists?.some(s=>s.id===l.id);
       const isPre = card.preSelectedLists?.has(l.id);
       const reason = card.aiSuggestion?.suggested_lists?.find(s=>s.id===l.id)?.reason||'';
-      return `<button class="chip lc ${isSel?'sel':''} ${isAI?'ai-s':''} ${isPre?'pre-s':''}" 
-        onclick="toggleList('${id}',${l.id},this)" 
+      return `<button class="chip lc ${isSel?'sel':''} ${isAI?'ai-s':''} ${isPre?'pre-s':''}"
+        onclick="toggleList('${id}',${l.id},this)"
         title="${reason || escH(l.name)}"
         aria-pressed="${isSel}">${escH(l.name)}</button>`;
     }).join('');
+    if (rest.length > 0) {
+      listChipsHTML += `<div class="list-picker-wrap">
+        <button class="list-more-btn" onclick="toggleListDropdown('${id}')" id="lmore-${id}">+${rest.length} more ▾</button>
+        <div class="list-dropdown" id="ldrop-${id}" style="display:none">
+          <input type="text" placeholder="🔍 Search lists…" oninput="filterListDropdown('${id}',this.value)" onclick="event.stopPropagation()">
+          <div class="list-dropdown-items" id="ldrop-items-${id}">
+            ${S.lists.map(l => {
+              const isSel = card.selectedLists.has(l.id);
+              return `<div class="list-dd-item ${isSel?'sel':''}" onclick="toggleListFromDrop('${id}',${l.id},this)">
+                <span class="dd-check">${isSel?'✓':''}</span>${escH(l.name)}
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>`;
+    }
+  }
 
   // Tag chips
   const allTags = new Set([...card.selectedTags, ...(card.aiSuggestion?.suggested_tags||[])]);
-  const tagChips = [...allTags].map(t => {
-    const isSel = card.selectedTags.has(t);
-    const isAI = card.aiSuggestion?.suggested_tags?.includes(t);
-    return `<span class="chip tc ${isSel?'sel':''} ${isAI?'ai-s':''}" 
-      onclick="toggleTag('${id}','${escH(t)}',this)" aria-pressed="${isSel}">${escH(t)}<button class="chip-x" onclick="event.stopPropagation();removeTag('${id}','${t}')">×</button></span>`;
+  const tagChips = [...allTags].map(tg => {
+    const isSel = card.selectedTags.has(tg);
+    const isAI = card.aiSuggestion?.suggested_tags?.includes(tg);
+    return `<span class="chip tc ${isSel?'sel':''} ${isAI?'ai-s':''}"
+      onclick="toggleTag('${id}','${escH(tg)}',this)" aria-pressed="${isSel}">${escH(tg)}<button class="chip-x" onclick="event.stopPropagation();removeTag('${id}','${tg}')">×</button></span>`;
   }).join('');
 
-  // Summary from metadata (not NIM)
+  // Summary from metadata
   const summary = desc ? `<div class="ai-label" style="font-size:9px;letter-spacing:1.4px;color:var(--text3);text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:6px"><span style="color:var(--text3)">■</span> ${t('ai_summary_label')}</div><div class="ai-summary">${escH(desc.slice(0,300))}</div>` : '';
+
+  // Retry buttons
+  let retryBtns = '';
+  if (card.metaError) retryBtns += `<button class="btn btn-retry" onclick="retryMeta('${id}')">↺ Meta</button>`;
+  if (card.nimError) retryBtns += `<button class="btn btn-retry" onclick="retryNIM('${id}')">↺ NIM</button>`;
+  if (card.saveError) retryBtns += `<button class="btn btn-retry" onclick="saveCard('${id}')">↺ ${t('lbl_save')}</button>`;
 
   // Footer buttons
   const isNSFW = getCfg().nsfwMode && !card.externalLoaded;
   const isAnalyzing = card.status === 'queued';
   const inQueue = S.nimQueue.some(x=>x.id===id);
   let footerBtns = `
-    <button class="btn btn-sv" onclick="saveCard('${id}')" ${isAnalyzing?'disabled':''} aria-label="In LinkAce speichern">
+    <button class="btn btn-sv" onclick="saveCard('${id}')" ${isAnalyzing?'disabled':''} aria-label="Save to LinkAce">
       ${card.saved ? '✓ ' + t('lbl_saved') : t('btn_save_to_linkace')}
     </button>
-    <button class="btn btn-disc" onclick="discardCard('${id}')">${t('btn_discard_short')}</button>`;
+    <button class="btn btn-disc" onclick="discardCard('${id}')">${t('btn_discard_short')}</button>
+    ${retryBtns}`;
   if (isNSFW) footerBtns += `<button class="btn btn-ext" onclick="loadExternal('${id}')">${t('btn_load_external')}</button>`;
   if (inQueue && !isAnalyzing) footerBtns += `<button class="btn btn-nim-now" onclick="promoteCard('${id}')">${t('btn_nim_now')}</button>`;
-  if (archiveUrl) footerBtns += `<button class="btn btn-arch" onclick="window.open('${archiveUrl}/${encodeURIComponent(card.url)}','_blank')">📦 Archiv</button>`;
+  if (archiveUrl) footerBtns += `<button class="btn btn-arch" onclick="window.open('${archiveUrl}/${encodeURIComponent(card.url)}','_blank')">📦</button>`;
 
-  // Favicon placeholder
   const favId = `fav-${id}`;
 
   el.innerHTML = `
@@ -1724,23 +1876,86 @@ function renderCard(id) {
     </div>
     <div class="card-body">
       ${summary}
-      ${isAnalyzing ? `<div class="ai-summary"><div class="typing-dots"><span></span><span></span><span></span></div> Analysiere…</div>` : ''}
+      ${isAnalyzing ? `<div class="ai-summary"><div class="typing-dots"><span></span><span></span><span></span></div> <span data-i18n="lbl_analyzing">Analyzing…</span></div>` : ''}
       <div class="sec-lbl">${t('lbl_lists')}</div>
-      <div class="chips" id="${id}-lists">${listChips}</div>
+      <div class="chips" id="${id}-lists">${listChipsHTML}</div>
       <div class="sec-lbl">${t('lbl_tags')}</div>
       <div class="chips" id="${id}-tags">
         ${tagChips}
-        <input class="tag-in" placeholder="+ Tag" onkeydown="handleTagKD(event,'${id}')" aria-label="Tag hinzufügen">
+        <input class="tag-in" placeholder="+ Tag" onkeydown="handleTagKD(event,'${id}')" aria-label="Add tag">
       </div>
     </div>
     <div class="card-foot">${footerBtns}</div>`;
-
-  if (card.saved) { el.classList.add('saved'); }
 
   // Load favicon
   const favEl = $(favId);
   if (favEl && !isNSFW) loadFavicon(favEl, card.url);
   else if (favEl) favEl.src = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%232a2a35'/></svg>`;
+
+  // Close dropdown on outside click
+  setTimeout(() => {
+    const drop = $(`ldrop-${id}`);
+    if (drop && drop.style.display !== 'none') {
+      document.addEventListener('click', function close(ev) {
+        if (!drop.contains(ev.target) && ev.target.id !== `lmore-${id}`) {
+          drop.style.display = 'none';
+          document.removeEventListener('click', close);
+        }
+      });
+    }
+  }, 0);
+}
+
+function toggleListDropdown(cardId) {
+  const drop = $(`ldrop-${cardId}`);
+  if (!drop) return;
+  const isOpen = drop.style.display !== 'none';
+  drop.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) {
+    const inp = drop.querySelector('input');
+    if (inp) { inp.value = ''; filterListDropdown(cardId, ''); inp.focus(); }
+  }
+}
+
+function filterListDropdown(cardId, query) {
+  const card = S.cards.get(cardId);
+  const items = $(`ldrop-items-${cardId}`);
+  if (!items || !card) return;
+  const q = query.toLowerCase();
+  items.innerHTML = S.lists
+    .filter(l => !query || l.name.toLowerCase().includes(q))
+    .map(l => {
+      const isSel = card.selectedLists.has(l.id);
+      return `<div class="list-dd-item ${isSel?'sel':''}" onclick="toggleListFromDrop('${cardId}',${l.id},this)">
+        <span class="dd-check">${isSel?'✓':''}</span>${escH(l.name)}
+      </div>`;
+    }).join('');
+}
+
+function toggleListFromDrop(cardId, listId, el) {
+  const card = S.cards.get(cardId);
+  if (!card) return;
+  card.manuallyEdited = true;
+  if (card.selectedLists.has(listId)) {
+    card.selectedLists.delete(listId);
+    el.classList.remove('sel');
+    el.querySelector('.dd-check').textContent = '';
+  } else {
+    card.selectedLists.add(listId);
+    bumpListUsage(listId);
+    el.classList.add('sel');
+    el.querySelector('.dd-check').textContent = '✓';
+  }
+  // Also refresh the top chips row
+  const chipsEl = $(`${cardId}-lists`);
+  if (chipsEl) {
+    const { top } = getTopLists(card);
+    chipsEl.querySelectorAll('.chip.lc').forEach(btn => {
+      const lid = parseInt(btn.getAttribute('onclick')?.match(/,(\d+),/)?.[1]);
+      if (lid) btn.classList.toggle('sel', card.selectedLists.has(lid));
+    });
+  }
+  if (card.status === 'queued' && !card.aiSuggestion) promoteCard(cardId);
 }
 
 function loadExternal(cardId) {
@@ -1796,8 +2011,10 @@ function handleTagKD(e, cardId) {
 
 async function saveCard(id) {
   const card = S.cards.get(id);
-  if (!card || card.status !== 'ready' || card.saved) return;
+  if (!card || card.status === 'saving' || card.saved) return;
   card.status = 'saving';
+  card.saveError = null;
+  card.saveErrorMsg = null;
   $(id)?.classList.add('saving');
   try {
     const c = getCfg();
@@ -1806,15 +2023,16 @@ async function saveCard(id) {
       url: card.url,
       title: card.meta?.title || '',
       description: card.meta?.description || '',
-      lists: [...card.selectedLists],           // correct field name (not list_ids)
-      tags: [...card.selectedTags],              // plain strings (not objects)
+      lists: [...card.selectedLists],
+      tags: [...card.selectedTags],
     };
-    // v1 uses is_private (bool), v2 uses visibility (int: 1=public, 2=private)
     if (isV2) payload.visibility = 1;
     else payload.is_private = false;
     await laReq('/links', 'POST', payload);
     card.saved = true;
     card.status = 'ready';
+    // Bump usage for all selected lists
+    card.selectedLists.forEach(lid => bumpListUsage(lid));
     S.savedToday++;
     LS.set('saved_today', S.savedToday);
     renderCard(id);
@@ -1823,11 +2041,15 @@ async function saveCard(id) {
   } catch(e) {
     card.status = 'ready';
     $(id)?.classList.remove('saving');
+    // Extract HTTP status code from error message "HTTP 422: …"
+    const httpMatch = e.message.match(/^HTTP (\d+)/);
+    card.saveError = httpMatch ? parseInt(httpMatch[1]) : 500;
+    card.saveErrorMsg = e.message;
     renderCard(id);
-    toast(`${t('toast_save_fail')}: ${e.message}`,'e',8000);
-    // Show in debug box in settings panel
+    const msg422 = card.saveError === 422 ? ' (Link already exists)' : '';
+    toast(`${t('toast_save_fail')}: ${e.message}${msg422}`,'e',8000);
     const dbg = $('la-save-debug');
-    if (dbg) { dbg.style.display='block'; dbg.textContent = `Letzter Fehler: ${e.message}`; }
+    if (dbg) { dbg.style.display='block'; dbg.textContent = `Last error: ${e.message}`; }
   }
 }
 
@@ -1842,15 +2064,50 @@ function discardCard(id) {
   if (el) { el.style.transition='opacity .2s,transform .2s'; el.style.opacity='0'; el.style.transform='scale(.95)'; setTimeout(()=>{ el.remove(); S.cards.delete(id); S.nimQueue=S.nimQueue.filter(x=>x.id!==id); updateSaveBar(); updateQueueBar(); },200); }
 }
 function discardAll() { [...S.cards.keys()].forEach(discardCard); }
+function discardDone() {
+  [...S.cards.entries()]
+    .filter(([,c]) => c.saved)
+    .forEach(([id]) => discardCard(id));
+}
+
+async function retryMeta(cardId) {
+  const card = S.cards.get(cardId);
+  if (!card) return;
+  card.metaError = null;
+  card.meta = null;
+  renderCard(cardId);
+  const meta = await fetchMeta(card.url);
+  card.meta = meta;
+  card.title = meta.title;
+  preSelectLists(card);
+  renderCard(cardId);
+  toast('Metadata reloaded', 's', 2000);
+}
+
+async function retryNIM(cardId) {
+  const card = S.cards.get(cardId);
+  if (!card) return;
+  card.nimError = null;
+  card.status = 'queued';
+  renderCard(cardId);
+  enqueueNIM(cardId, 1); // priority
+}
+
 
 function updateSaveBar() {
-  const ready = [...S.cards.values()].filter(c=>c.status==='ready'&&!c.saved).length;
-  const total = S.cards.size;
+  const cards = [...S.cards.values()];
+  const ready = cards.filter(c => c.status === 'ready' && !c.saved).length;
+  const total = cards.length;
+  const done = cards.filter(c => c.saved).length;
   const bar = $('btm-bar');
-  bar.querySelector('#btm-cnt').textContent = `${ready} bereit`;
+  bar.querySelector('#btm-cnt').textContent = `${ready} ready`;
   bar.classList.toggle('vis', ready > 0);
-  $('disc-all').classList.toggle('vis', total > 0);
+  const discWrap = $('disc-btns');
+  if (discWrap) discWrap.style.display = total > 0 ? 'flex' : 'none';
   $('empty').classList.toggle('hidden', total > 0);
+  // Show "discard saved" only when there are saved cards
+  const discDone = $('disc-done');
+  if (discDone) discDone.style.display = done > 0 ? '' : 'none';
 }
 
 function updateStats() {
