@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LINKDROP v4 — AI Bookmark Manager</title>
+<title>LINKDROP v5 — AI Bookmark Manager</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -365,6 +365,7 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
         <div style="font-size:11px;color:var(--text3);text-align:center;padding:10px">Noch keine Listen geladen</div>
       </div>
       <button class="btn-t" onclick="loadLinkAceData()">↺ Listen & Tags neu laden</button>
+      <button class="btn-t" id="btn-merge" onclick="openMergeModal()" style="margin-top:6px;border-color:var(--amber);color:var(--amber);display:none">⊕ Gleichnamige Listen zusammenführen</button>
     </div>
 
     <!-- META SCRAPING -->
@@ -983,13 +984,34 @@ async function createListLA() {
 function renderLALists() {
   const el = $('la-list-items');
   if (!el) return;
-  if (!S.lists.length) { el.innerHTML = '<div style="font-size:11px;color:var(--text3);text-align:center;padding:10px">Keine Listen</div>'; return; }
-  el.innerHTML = S.lists.map(l => `
-    <div class="list-item">
-      <span title="${escH(l.name)}">${escH(l.name)}</span>
+  if (!S.lists.length) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--text3);text-align:center;padding:10px">Keine Listen</div>';
+    const mb = $('btn-merge'); if (mb) mb.style.display = 'none';
+    return;
+  }
+
+  // Detect duplicates for highlighting
+  const nameCounts = {};
+  for (const l of S.lists) {
+    const k = l.name.trim().toLowerCase();
+    nameCounts[k] = (nameCounts[k] || 0) + 1;
+  }
+  const dupeCount = Object.values(nameCounts).filter(v => v > 1).length;
+
+  el.innerHTML = S.lists.map(l => {
+    const isDupe = nameCounts[l.name.trim().toLowerCase()] > 1;
+    return `<div class="list-item" ${isDupe ? 'style="border-color:var(--amber)"' : ''}>
+      <span title="${escH(l.name)}" style="${isDupe ? 'color:var(--amber)' : ''}">${escH(l.name)}${isDupe ? ' <span style="font-size:9px;opacity:.7">(Duplikat)</span>' : ''}</span>
       <span style="color:var(--text3);font-size:10px">#${l.id}</span>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
+
+  // Show/hide merge button
+  const mb = $('btn-merge');
+  if (mb) {
+    mb.style.display = dupeCount > 0 ? '' : 'none';
+    mb.textContent = `⊕ ${dupeCount} gleichnamige Gruppe${dupeCount>1?'n':''} zusammenführen`;
+  }
 }
 
 // ╔══════════════════════════════════════════════════╗
@@ -1665,6 +1687,164 @@ function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;
 const delay = ms => new Promise(r=>setTimeout(r,ms));
 
 // ╔══════════════════════════════════════════════════╗
+// ║  LIST MERGE                                      ║
+// ╚══════════════════════════════════════════════════╝
+function findDuplicateLists() {
+  // Group lists by normalised name (trim + lowercase)
+  const groups = {};
+  for (const list of S.lists) {
+    const key = list.name.trim().toLowerCase();
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(list);
+  }
+  // Only return groups that have more than one entry
+  return Object.values(groups).filter(g => g.length > 1);
+}
+
+function openMergeModal() {
+  const dupes = findDuplicateLists();
+  const info = $('merge-info');
+  const groupsEl = $('merge-groups');
+  const runBtn = $('merge-run-btn');
+  const progressEl = $('merge-progress');
+
+  progressEl.style.display = 'none';
+  progressEl.innerHTML = '';
+  runBtn.style.display = '';
+  runBtn.disabled = false;
+  runBtn.textContent = '⊕ Zusammenführen';
+
+  if (!dupes.length) {
+    info.innerHTML = '<span style="color:var(--green)">✓ Keine gleichnamigen Listen gefunden.</span>';
+    groupsEl.innerHTML = '';
+    runBtn.style.display = 'none';
+    $('merge-modal').classList.add('open');
+    return;
+  }
+
+  info.innerHTML = `<b style="color:var(--amber)">${dupes.length}</b> Gruppe${dupes.length>1?'n':''} mit gleichnamigen Listen gefunden. Der <b>erste</b> Eintrag je Gruppe wird behalten, alle Links der anderen werden dorthin verschoben, dann werden die Duplikate gelöscht.`;
+
+  groupsEl.innerHTML = dupes.map(group => {
+    const keeper = group[0];
+    const dupeList = group.slice(1);
+    return `<div style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:10px 12px">
+      <div style="font-size:11px;font-weight:600;color:var(--text);margin-bottom:7px">"${escH(keeper.name)}" — ${group.length} Einträge</div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text2)">
+          <span style="background:var(--green-dim);border:1px solid var(--green);color:var(--green);padding:1px 7px;border-radius:3px;font-size:9px;letter-spacing:.8px">BEHALTEN</span>
+          <span>#${keeper.id}</span>
+          <span style="color:var(--text)">${escH(keeper.name)}</span>
+        </div>
+        ${dupeList.map(d => `
+        <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text2)">
+          <span style="background:var(--red-dim);border:1px solid var(--red);color:var(--red);padding:1px 7px;border-radius:3px;font-size:9px;letter-spacing:.8px">ZUSAMMENFÜHREN</span>
+          <span>#${d.id}</span>
+          <span>${escH(d.name)}</span>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+
+  $('merge-modal').classList.add('open');
+}
+
+async function runMerge() {
+  const dupes = findDuplicateLists();
+  if (!dupes.length) return;
+
+  const runBtn = $('merge-run-btn');
+  const progressEl = $('merge-progress');
+  const closeBtn = $('merge-close-btn');
+
+  runBtn.disabled = true;
+  runBtn.textContent = '…läuft';
+  progressEl.style.display = 'block';
+  progressEl.innerHTML = '';
+  closeBtn.disabled = true;
+
+  function log(msg, color='var(--text2)') {
+    progressEl.innerHTML += `<div style="color:${color}">${msg}</div>`;
+    progressEl.scrollTop = progressEl.scrollHeight;
+  }
+
+  let totalMoved = 0;
+  let totalDeleted = 0;
+  let errors = 0;
+
+  for (const group of dupes) {
+    const keeper = group[0];
+    const toMerge = group.slice(1);
+    log(`<b style="color:var(--text)">Gruppe: "${escH(keeper.name)}"</b>`);
+    log(`  → Behalte #${keeper.id}, führe ${toMerge.length} Liste(n) zusammen`);
+
+    for (const src of toMerge) {
+      // 1. Get all links in the source list (paginated)
+      let page = 1;
+      let allLinks = [];
+      try {
+        while (true) {
+          const res = await laReq(`/lists/${src.id}/links?per_page=100&page=${page}`);
+          const links = res.data || res || [];
+          allLinks = allLinks.concat(links);
+          if (!links.length || links.length < 100) break;
+          page++;
+        }
+        log(`  ↳ #${src.id} hat ${allLinks.length} Link(s)`);
+      } catch(e) {
+        log(`  ✕ Fehler beim Abrufen von Links aus #${src.id}: ${escH(e.message)}`,'var(--red)');
+        errors++;
+        continue;
+      }
+
+      // 2. For each link: add keeper list to it (PATCH /links/{id})
+      for (const link of allLinks) {
+        try {
+          // Get current lists of this link to avoid overwriting
+          const currentListIds = (link.lists || []).map(l => l.id);
+          if (!currentListIds.includes(keeper.id)) {
+            const newListIds = [...new Set([...currentListIds, keeper.id])].filter(id => id !== src.id);
+            await laReq(`/links/${link.id}`, 'PUT', {
+              url: link.url,
+              title: link.title || '',
+              lists: newListIds,
+              tags: (link.tags||[]).map(t=>t.name),
+              visibility: link.visibility ?? 1
+            });
+            totalMoved++;
+          }
+        } catch(e) {
+          log(`    ✕ Link #${link.id}: ${escH(e.message)}`,'var(--red)');
+          errors++;
+        }
+      }
+      log(`  ✓ ${allLinks.length} Links verschoben → #${keeper.id}`,'var(--green)');
+
+      // 3. Delete the source list
+      try {
+        await laReq(`/lists/${src.id}`, 'DELETE');
+        log(`  🗑 Liste #${src.id} gelöscht`,'var(--text3)');
+        totalDeleted++;
+      } catch(e) {
+        log(`  ✕ Löschen #${src.id} fehlgeschlagen: ${escH(e.message)}`,'var(--red)');
+        errors++;
+      }
+
+      await delay(200); // polite rate limiting
+    }
+  }
+
+  log('');
+  log(`<b>Fertig:</b> ${totalMoved} Links verschoben, ${totalDeleted} Listen gelöscht${errors ? `, <span style="color:var(--red)">${errors} Fehler</span>` : ' ✓'}`, 'var(--text)');
+
+  runBtn.style.display = 'none';
+  closeBtn.disabled = false;
+
+  // Reload lists to reflect changes
+  await loadLinkAceData();
+  toast(`Merge abgeschlossen: ${totalMoved} Links, ${totalDeleted} Listen entfernt`, errors ? 'w' : 's', 5000);
+}
+
+// ╔══════════════════════════════════════════════════╗
 // ║  INIT                                            ║
 // ╚══════════════════════════════════════════════════╝
 loadCfgToPanel();
@@ -1676,5 +1856,20 @@ if (ic.laUrl && ic.laToken) loadLinkAceData();
 else { $('d-la').className = 'ind-dot err'; }
 if (ic.nimKey) $('d-nim').className = 'ind-dot ok';
 </script>
+
+<!-- MERGE MODAL -->
+<div class="modal-overlay" id="merge-modal">
+  <div class="modal" style="max-width:500px">
+    <h2 style="color:var(--amber)">⊕ Listen zusammenführen</h2>
+    <p id="merge-info" style="margin-bottom:12px"></p>
+    <div id="merge-groups" style="max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;margin-bottom:16px"></div>
+    <div id="merge-progress" style="display:none;font-size:11px;color:var(--text2);background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:10px;font-family:var(--fm);line-height:1.9;max-height:180px;overflow-y:auto"></div>
+    <div class="modal-actions" style="margin-top:0">
+      <button class="btn btn-disc" id="merge-close-btn" onclick="document.getElementById('merge-modal').classList.remove('open')">Schließen</button>
+      <button class="btn btn-sva" id="merge-run-btn" onclick="runMerge()">⊕ Zusammenführen</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
