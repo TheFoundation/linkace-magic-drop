@@ -2036,16 +2036,81 @@ function clearAllData() {
 // ║  DRAG & DROP / PASTE                             ║
 // ╚══════════════════════════════════════════════════╝
 let dragN = 0;
-document.addEventListener('dragenter', e => { e.preventDefault(); dragN++; $('dropzone').classList.add('drag-over'); $('drop-border').classList.add('show'); });
-document.addEventListener('dragleave', () => { dragN--; if(dragN<=0){dragN=0;$('dropzone').classList.remove('drag-over');$('drop-border').classList.remove('show');} });
-document.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect='copy'; });
+// ── DRAG & DROP ─────────────────────────────────────────────────────────────
+// Collects URLs from ALL formats browsers use when dragging history/bookmarks:
+//   text/x-moz-url      – Firefox: "url\ntitle\nurl\ntitle…" (odd=URL, even=title)
+//   text/uri-list       – RFC 2483: one URL per line, lines starting with # = comment
+//   text/html           – <a href="…"> anchors (Chrome multi-select history)
+//   text/plain          – plain URLs, space/newline separated
+//   application/x-moz-file – Firefox file drags (skipped, no URL)
+function extractURLsFromDrop(dt) {
+  const seen = new Set();
+  const add = u => { try { const clean = new URL(u.trim()).href; if (clean.startsWith('http')) seen.add(clean); } catch {} };
+
+  // 1. text/x-moz-url — Firefox history/bookmarks multi-select
+  //    Format: url LF title LF url LF title …  (CRLF or LF)
+  const mozUrl = dt.getData('text/x-moz-url');
+  if (mozUrl) {
+    mozUrl.split(/\r?\n/).forEach((line, i) => { if (i % 2 === 0) add(line); }); // even lines = URLs
+  }
+
+  // 2. text/uri-list — RFC 2483, used by Chrome, Edge, Safari for bookmarks/history
+  //    Lines starting with '#' are comments; each other line is one URI
+  const uriList = dt.getData('text/uri-list');
+  if (uriList) {
+    uriList.split(/\r?\n/).forEach(line => { if (!line.startsWith('#')) add(line); });
+  }
+
+  // 3. text/html — Chrome multi-select history items, some bookmark managers
+  //    Extract all href= values from anchor tags
+  const html = dt.getData('text/html');
+  if (html) {
+    const matches = html.matchAll(/href=["']([^"']+)["']/gi);
+    for (const m of matches) add(m[1]);
+  }
+
+  // 4. text/plain — plain fallback
+  const plain = dt.getData('text/plain');
+  if (plain) extractURLs(plain).forEach(u => seen.add(u));
+
+  // Debug: log available types when nothing matched (helps diagnose new browsers)
+  if (seen.size === 0 && dt.types?.length) {
+    console.debug('[LINKDROP] Drop received, no URLs found. Available types:', [...dt.types]);
+    dt.types.forEach(type => console.debug(`  [${type}]:`, dt.getData(type).slice(0, 200)));
+  }
+
+  return [...seen];
+}
+
+document.addEventListener('dragenter', e => {
+  e.preventDefault();
+  dragN++;
+  $('dropzone').classList.add('drag-over');
+  $('drop-border').classList.add('show');
+});
+document.addEventListener('dragleave', () => {
+  dragN--;
+  if (dragN <= 0) { dragN = 0; $('dropzone').classList.remove('drag-over'); $('drop-border').classList.remove('show'); }
+});
+document.addEventListener('dragover', e => {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'copy';
+});
 document.addEventListener('drop', e => {
-  e.preventDefault(); dragN=0;
-  $('dropzone').classList.remove('drag-over'); $('drop-border').classList.remove('show');
-  const text = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('text/uri-list') || '';
-  const urls = extractURLs(text);
-  if (urls.length) { urls.forEach(createCard); toast(`${urls.length} URL${urls.length>1?'s':''} erkannt`,'i'); }
-  else toast('Keine URL erkannt','e');
+  e.preventDefault();
+  dragN = 0;
+  $('dropzone').classList.remove('drag-over');
+  $('drop-border').classList.remove('show');
+
+  const urls = extractURLsFromDrop(e.dataTransfer);
+  if (urls.length) {
+    urls.forEach(createCard);
+    toast(`${urls.length} URL${urls.length > 1 ? 's' : ''} recognized`, 'i');
+  } else {
+    // Show a more helpful error with what was received
+    const types = [...(e.dataTransfer.types || [])].join(', ');
+    toast(`No URL found (types: ${types || 'none'})`, 'e', 6000);
+  }
 });
 
 document.addEventListener('paste', e => {
@@ -2059,7 +2124,9 @@ document.addEventListener('paste', e => {
 });
 
 function extractURLs(text) {
-  return [...new Set((text.match(/https?:\/\/[^\s"'<>()[\]{}|\\^`\x00-\x1F\x7F-\x9F]+/gi)||[]))];
+  // Match URLs, then strip trailing punctuation that's often not part of the URL
+  const raw = text.match(/https?:\/\/[^\s"'<>()[\]{}|\\^`\x00-\x1F\x7F-\x9F]+/gi) || [];
+  return [...new Set(raw.map(u => u.replace(/[.,;:!?)]+$/, '')))];
 }
 
 // ╔══════════════════════════════════════════════════╗
