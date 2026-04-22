@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LINKDROP v8 — AI Bookmark Manager</title>
+<title>LINKDROP v0.9 — AI Bookmark Manager</title>
 
 <!-- ═══ BUILT-IN TRANSLATIONS ═══════════════════════════════════════════════
      Add extra languages at  Settings → Language → Translation URL
@@ -480,6 +480,12 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
 .list-dd-item:hover{background:var(--bg4);color:var(--text)}
 .list-dd-item.sel{color:var(--cyan);background:var(--cyan-dim)}
 .list-dd-item .dd-check{width:12px;height:12px;flex-shrink:0;color:var(--cyan)}
+.list-dd-create{display:flex;gap:5px;margin-top:5px;padding-top:5px;border-top:1px solid var(--border)}
+.list-dd-create input{flex:1;background:var(--bg4);border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-family:var(--fm);font-size:11px;color:var(--text);outline:none}
+.list-dd-create input:focus{border-color:var(--cyan)}
+.list-dd-create input::placeholder{color:var(--text3)}
+.list-dd-create button{background:var(--cyan-dim);border:1px solid var(--cyan);color:var(--cyan);border-radius:4px;padding:4px 9px;font-family:var(--fm);font-size:11px;cursor:pointer;white-space:nowrap;transition:all .15s}
+.list-dd-create button:hover{background:var(--cyan);color:#000}
 
 /* ── LANGUAGE SWITCHER ── */
 .lang-switcher{display:flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:3px 5px}
@@ -1826,6 +1832,12 @@ function renderCard(id) {
               </div>`;
             }).join('')}
           </div>
+          <div class="list-dd-create">
+            <input type="text" id="ldrop-new-${id}" placeholder="+ New list…"
+              onkeydown="if(event.key==='Enter'){event.stopPropagation();createListFromCard('${id}')}"
+              onclick="event.stopPropagation()">
+            <button onclick="event.stopPropagation();createListFromCard('${id}')">Create</button>
+          </div>
         </div>
       </div>`;
     }
@@ -1930,6 +1942,63 @@ function filterListDropdown(cardId, query) {
         <span class="dd-check">${isSel?'✓':''}</span>${escH(l.name)}
       </div>`;
     }).join('');
+}
+
+async function createListFromCard(cardId) {
+  const inp = $(`ldrop-new-${cardId}`);
+  if (!inp) return;
+  const name = inp.value.trim();
+  if (!name) { inp.focus(); return; }
+  inp.disabled = true;
+  try {
+    const res = await laReq('/lists', 'POST', { name, description: '' });
+    const newList = res.data || res;
+    S.lists.push(newList);
+    inp.value = '';
+    inp.disabled = false;
+    // Auto-select the new list on this card
+    const card = S.cards.get(cardId);
+    if (card) {
+      card.selectedLists.add(newList.id);
+      bumpListUsage(newList.id);
+      card.manuallyEdited = true;
+    }
+    // Refresh dropdown items and top chips
+    filterListDropdown(cardId, '');
+    renderLALists(); // update settings panel
+    updateStats();
+    // Refresh the top-42 chips on this card without closing dropdown
+    const chipsEl = $(`${cardId}-lists`);
+    if (chipsEl) {
+      // Re-render just the chips portion by re-calling getTopLists
+      const c2 = S.cards.get(cardId);
+      if (c2) {
+        const { top, rest } = getTopLists(c2);
+        // Replace chips (everything before the list-picker-wrap)
+        const wrap = chipsEl.querySelector('.list-picker-wrap');
+        // Remove all chip elements, keep the wrap
+        [...chipsEl.children].forEach(ch => { if (!ch.classList.contains('list-picker-wrap')) ch.remove(); });
+        const newChips = top.map(l => {
+          const isSel = c2.selectedLists.has(l.id);
+          const btn = document.createElement('button');
+          btn.className = `chip lc ${isSel?'sel':''}`;
+          btn.setAttribute('onclick', `toggleList('${cardId}',${l.id},this)`);
+          btn.setAttribute('aria-pressed', isSel);
+          btn.textContent = l.name;
+          return btn;
+        });
+        newChips.forEach(b => chipsEl.insertBefore(b, wrap || null));
+        // Update +N more button text
+        const moreBtn = $(`lmore-${cardId}`);
+        if (moreBtn) moreBtn.textContent = `+${rest.length} more ▾`;
+      }
+    }
+    toast(`List "${escH(name)}" created & selected`, 's', 2500);
+    inp.focus();
+  } catch(e) {
+    inp.disabled = false;
+    toast(`Create list: ${e.message}`, 'e', 5000);
+  }
 }
 
 function toggleListFromDrop(cardId, listId, el) {
