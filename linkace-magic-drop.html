@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LINKDROP v0.9 — AI Bookmark Manager</title>
+<title>LINKDROP v2 — AI Bookmark Manager</title>
 
 <!-- ═══ BUILT-IN TRANSLATIONS ═══════════════════════════════════════════════
      Add extra languages at  Settings → Language → Translation URL
@@ -329,6 +329,10 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .card-info{flex:1;min-width:0}
 .card-ttl{font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .card-url{font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;letter-spacing:.3px}
+.title-src{display:inline-flex;gap:2px;margin-left:5px;vertical-align:middle}
+.title-src button{font-family:var(--fm);font-size:8px;padding:1px 5px;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--text3);cursor:pointer;transition:all .12s;letter-spacing:.4px}
+.title-src button:hover{border-color:var(--text3);color:var(--text2)}
+.title-src button.active{border-color:var(--cyan);background:var(--cyan-dim);color:var(--cyan)}
 .card-badges{display:flex;gap:5px;align-items:center;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
 .badge{font-size:9px;font-weight:600;letter-spacing:.8px;padding:3px 7px;border-radius:3px;text-transform:uppercase;white-space:nowrap}
 .badge.analyzing{background:var(--violet-dim);color:#a78bfa;border:1px solid var(--violet)}
@@ -558,6 +562,7 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
     <button class="p-tab" data-tab="fav" onclick="switchTab('fav')" data-i18n="tab_fav">Favicons</button>
     <button class="p-tab" data-tab="arch" onclick="switchTab('arch')" data-i18n="tab_arch">Archive</button>
     <button class="p-tab" data-tab="bak" onclick="switchTab('bak')" data-i18n="tab_bak">Backup</button>
+    <button class="p-tab" data-tab="bookmarklet" onclick="switchTab('bookmarklet')">🔖 Bookmarklet</button>
   </div>
   <div class="p-panes">
 
@@ -567,16 +572,27 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
       <div class="fg"><label class="fl" data-i18n="lbl_api_key">API Key</label><input class="fi" id="nim-key" type="password" placeholder="nvapi-..." autocomplete="off"></div>
       <div class="fg"><label class="fl" data-i18n="lbl_model">Model</label>
         <select class="fi" id="nim-model">
-          <option value="meta/llama-3.1-70b-instruct">meta/llama-3.1-70b-instruct</option>
-          <option value="meta/llama-3.3-70b-instruct">meta/llama-3.3-70b-instruct</option>
-          <option value="mistralai/mixtral-8x7b-instruct">mistralai/mixtral-8x7b-instruct</option>
-          <option value="nvidia/llama-3.1-nemotron-70b-instruct">nvidia/llama-3.1-nemotron-70b-instruct</option>
-          <option value="custom">Eigenes Modell…</option>
+          <optgroup label="Meta LLaMA 3.1">
+            <option value="meta/llama-3.1-8b-instruct">meta/llama-3.1-8b-instruct (fast)</option>
+            <option value="meta/llama-3.1-70b-instruct">meta/llama-3.1-70b-instruct</option>
+          </optgroup>
+          <optgroup label="Meta LLaMA 3.3">
+            <option value="meta/llama-3.3-70b-instruct">meta/llama-3.3-70b-instruct</option>
+          </optgroup>
+          <optgroup label="Nvidia Nemotron">
+            <option value="nvidia/llama-3.1-nemotron-70b-instruct">nvidia/llama-3.1-nemotron-70b-instruct</option>
+            <option value="nvidia/llama-3.3-nemotron-super-49b-v1.5">nvidia/llama-3.3-nemotron-super-49b-v1.5</option>
+          </optgroup>
+          <optgroup label="Mistral">
+            <option value="mistralai/mixtral-8x7b-instruct">mistralai/mixtral-8x7b-instruct</option>
+          </optgroup>
+          <option value="custom">Custom model…</option>
         </select>
       </div>
-      <div class="fg" id="nim-custom-model-wrap" style="display:none">
+      <div class="fg" id="nim-custom-model-wrap">
         <label class="fl" data-i18n="lbl_custom_model_id">Custom Model ID</label>
-        <input class="fi" id="nim-custom-model" type="text" placeholder="vendor/model-name">
+        <input class="fi" id="nim-custom-model" type="text" placeholder="vendor/model-name — overrides dropdown if set">
+        <div class="info-txt" style="margin-top:4px">Leave empty to use the selected preset. If filled, this always overrides the dropdown.</div>
       </div>
 
       <div class="psec" data-i18n="psec_nim_endpoint_url">NIM Endpoint URL</div>
@@ -760,6 +776,47 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
 
       <div class="psec" data-i18n="psec_danger_zone">Danger Zone</div>
       <button class="btn-t btn-danger" onclick="clearAllData()"><span data-i18n="btn_clear_data">✕ Delete all local data</span></button>
+    </div>
+
+    <!-- BOOKMARKLET -->
+    <div class="p-pane" id="pane-bookmarklet">
+      <div class="psec">Bookmarklet</div>
+      <div class="info-txt" style="margin-bottom:12px">
+        The bookmarklet collects the current page's URL, title, meta description and selected text, then opens LINKDROP with these as GET parameters — bypassing CORS entirely.
+      </div>
+      <div class="fg">
+        <label class="fl">LINKDROP URL</label>
+        <input class="fi" id="bm-self-url" type="url" placeholder="https://your-host/linkdrop.html or file:///…/linkdrop.html" autocomplete="off" oninput="renderBookmarklet()">
+        <div class="info-txt" style="margin-top:5px" id="bm-url-hint">Enter the URL where this file is served/stored.</div>
+      </div>
+      <div class="fg">
+        <label class="fl">Max description length</label>
+        <input class="fi" id="bm-max-desc" type="number" value="500" min="0" max="2000" oninput="renderBookmarklet()" style="width:120px">
+      </div>
+      <div class="fg" style="display:flex;align-items:center;gap:9px">
+        <input type="checkbox" id="bm-send-selection" checked style="accent-color:var(--cyan);cursor:pointer" onchange="renderBookmarklet()">
+        <label for="bm-send-selection" style="font-size:12px;color:var(--text2);cursor:pointer">Include selected text as description if present</label>
+      </div>
+      <div class="psec">Bookmarklet Code</div>
+      <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:5px;padding:10px;font-size:10px;font-family:var(--fm);color:var(--text2);word-break:break-all;line-height:1.6;user-select:all;cursor:text;max-height:120px;overflow-y:auto" id="bm-code-preview">Configure the LINKDROP URL above first.</div>
+      <button class="btn-t" onclick="copyBookmarklet()" style="margin-top:8px">⎘ Copy to clipboard</button>
+
+      <div class="psec" style="margin-top:20px">Install</div>
+      <div class="info-txt" style="margin-bottom:10px">Drag this button to your bookmarks bar:</div>
+      <a id="bm-drag-link" href="#" style="display:inline-flex;align-items:center;gap:7px;background:var(--cyan-dim);border:1px solid var(--cyan);color:var(--cyan);padding:8px 14px;border-radius:5px;font-family:var(--fm);font-size:12px;font-weight:600;text-decoration:none;cursor:grab;user-select:none" draggable="true">
+        🔖 Save to LINKDROP
+      </a>
+      <div class="info-txt" style="margin-top:10px">
+        Or: copy the code above → create a new bookmark manually → paste as URL.
+      </div>
+
+      <div class="psec" style="margin-top:20px">GET Parameters (for reference)</div>
+      <div style="font-size:11px;color:var(--text3);line-height:1.9;font-family:var(--fm)">
+        <code style="color:var(--cyan)">url</code> — Page URL<br>
+        <code style="color:var(--cyan)">title</code> — Page title<br>
+        <code style="color:var(--cyan)">desc</code> — Meta description or selected text<br>
+        <code style="color:var(--cyan)">focus</code> — If <code>1</code>, window is focused and panel stays closed
+      </div>
     </div>
   </div>
 </aside>
@@ -974,7 +1031,7 @@ function saveCfg() {
   LS.set('nim_key', $v('nim-key'));
   const model = $v('nim-model');
   LS.set('nim_model', model);
-  if (model === 'custom') LS.set('nim_custom_model', $v('nim-custom-model'));
+  LS.set('nim_custom_model', $v('nim-custom-model'));  // always saved, overrides dropdown if set
   LS.set('nim_url_mode', document.querySelector('[name=nim-url-mode]:checked')?.value||'direct');
   LS.set('nim_cors_url', $v('nim-cors-url'));
   LS.set('nim_cors_proto', $('nim-cors-proto')?.checked?'1':'0');
@@ -1000,7 +1057,7 @@ function loadCfgToPanel() {
   $sv('nim-key', c.nimKey);
   $sv('nim-model', c.nimModel);
   $sv('nim-custom-model', c.nimCustomModel);
-  if (c.nimModel === 'custom') show('nim-custom-model-wrap');
+  // wrap is always visible now
   // NIM URL radio
   document.querySelectorAll('[name=nim-url-mode]').forEach(r => {
     r.checked = r.value === c.nimUrlMode;
@@ -1094,7 +1151,8 @@ document.querySelectorAll('.radio-opt input[type=radio]').forEach(r => {
   });
 });
 document.querySelector('[name=nim-model]')?.addEventListener('change', e => {
-  e.target.value==='custom' ? show('nim-custom-model-wrap') : hide('nim-custom-model-wrap');
+  // wrap is always visible; custom text field overrides if non-empty
+  saveCfg();
 });
 
 function updateNIMPreview() {
@@ -1108,6 +1166,8 @@ function updateNIMPreview() {
   } else {
     preview = `<span>${nimFull}</span>`;
   }
+  const effectiveModel = getModel();
+  if (effectiveModel) preview += `<br><span style="color:var(--violet);font-size:9px">model: ${effectiveModel}</span>`;
   const el = $('nim-url-preview');
   if (el) el.innerHTML = preview;
 }
@@ -1270,18 +1330,28 @@ async function fetchMeta(url) {
   }
 
   if (meta) {
-    result.title = meta.title || '';
+    result.title       = meta.title       || '';
+    result.titleOg     = meta.titleOg     || '';
+    result.titleHtml   = meta.titleHtml   || '';
     result.description = meta.description || '';
   }
 
-  // Fallback title from URL
+  // Fallback title from URL — prefer longest non-numeric path segment over bare IDs
   if (!result.title) {
     try {
       const u = new URL(url);
       const parts = u.pathname.split('/').filter(Boolean);
-      const last = parts[parts.length-1];
-      if (last) result.title = decodeURIComponent(last.replace(/[-_]/g,' ').replace(/\.[^.]+$/,''));
-      else result.title = u.hostname.replace('www.','');
+      // Score each segment: prefer non-numeric, prefer longer, prefer human-readable slugs
+      const scored = parts.map(p => {
+        const dec = decodeURIComponent(p).replace(/\.[^.]+$/, '');
+        const isNumeric = /^\d+$/.test(dec);
+        const hasLetters = /[a-zA-Z]{3,}/.test(dec);
+        return { dec, score: (hasLetters ? 100 : 0) + (isNumeric ? 0 : 10) + dec.length };
+      });
+      scored.sort((a, b) => b.score - a.score);
+      const best = scored[0];
+      if (best) result.title = best.dec.replace(/[-_]/g, ' ');
+      else result.title = u.hostname.replace('www.', '');
     } catch { result.title = url; }
   }
 
@@ -1294,26 +1364,46 @@ function parseHTMLMeta(html, url) {
   const get = (sel, attr='content') => doc.querySelector(sel)?.getAttribute(attr) || '';
   const isSOSite = SO_DOMAINS.some(d => url.includes(d));
 
-  let title = '';
+  // --- Collect all three title variants independently ---
+  const rawOg      = get('meta[property="og:title"]') || get('meta[name="twitter:title"]') || '';
+  const rawHtml    = doc.querySelector('title')?.textContent?.trim() || '';
+  // Strip common site-name suffixes from the <title> tag
+  const SUFFIXES = /\s*[-–|·•]\s*(Stack Overflow|Super User|Ask Ubuntu|Server Fault|Stack Exchange|GitHub|Reddit|YouTube|Wikipedia|Medium|Dev\.to|Hacker News|Discourse|Gitea|Forgejo|Codeberg|GitLab|Bitbucket|Lobsters|Forum|Community)[^$]*/i;
+  const cleanHtml  = rawHtml.replace(SUFFIXES, '').trim();
+
+  let titleAuto = '';
   if (isSOSite) {
-    // For SO: prefer structured title, strip "- Stack Overflow" suffix
-    title = doc.querySelector('title')?.textContent?.replace(/\s*[-|—]\s*(Stack Overflow|Super User|Ask Ubuntu|Server Fault|Stack Exchange).*/i,'').trim() || '';
+    titleAuto = cleanHtml || rawOg;
   } else {
-    title = get('meta[property="og:title"]') || get('meta[name="twitter:title"]') || doc.querySelector('title')?.textContent?.trim() || '';
+    // Auto: prefer og:title, but fall back to cleaned <title>
+    titleAuto = rawOg || cleanHtml;
   }
 
   let desc = '';
   if (isSOSite) {
-    // SO: use the question body or first tag as description
     desc = get('meta[name="description"]') || '';
-    // Extract SO tags from meta keywords
     const kw = get('meta[name="keywords"]');
     if (kw) desc = kw + ' ' + desc;
   } else {
     desc = get('meta[property="og:description"]') || get('meta[name="description"]') || get('meta[name="twitter:description"]') || '';
   }
 
-  return { title: title.slice(0,200), description: desc.slice(0,500) };
+  return {
+    title:      titleAuto.slice(0, 200),
+    titleOg:    rawOg.slice(0, 200),
+    titleHtml:  cleanHtml.slice(0, 200),
+    description: desc.slice(0, 500)
+  };
+}
+
+// Derive the displayed title for a card given its titleSource setting
+function getCardTitle(card) {
+  const src = card.titleSource || 'auto';
+  const m = card.meta;
+  if (!m) return card.title || getDomain(card.url);
+  if (src === 'og')   return m.titleOg   || m.title || getDomain(card.url);
+  if (src === 'html') return m.titleHtml || m.title || getDomain(card.url);
+  return m.title || getDomain(card.url); // 'auto'
 }
 
 // ╔══════════════════════════════════════════════════╗
@@ -1520,7 +1610,9 @@ async function testNIM() {
 
 function getModel() {
   const c = getCfg();
-  return c.nimModel === 'custom' ? c.nimCustomModel : c.nimModel;
+  // Custom text field always overrides dropdown if non-empty
+  if (c.nimCustomModel && c.nimCustomModel.trim()) return c.nimCustomModel.trim();
+  return c.nimModel === 'custom' ? '' : c.nimModel;
 }
 
 // Queue management
@@ -1635,7 +1727,7 @@ async function runNIMForCard(cardId) {
     const prompt = `You are a bookmark categorization assistant. Analyze the bookmark below and suggest which lists and tags it belongs to from the provided candidates array.
 
 URL: ${card.url}
-Title: ${card.meta?.title || '(unknown)'}
+Title: ${getCardTitle(card) || '(unknown)'}
 Description: ${card.meta?.description?.slice(0,400) || '(none)'}
 Detected languages/frameworks: ${langs || 'none'}
 Stack Overflow site: ${card.meta?.isSOSite ? 'yes' : 'no'}
@@ -1700,18 +1792,25 @@ function createCard(url) {
     selectedLists: new Set(), selectedTags: new Set(),
     aiSuggestion: null, nimError: null, nimSkipped: false,
     externalLoaded: false, manuallyEdited: false, saved: false,
-    saveError: null, saveErrorMsg: null, metaError: null
+    saveError: null, saveErrorMsg: null, metaError: null,
+    titleSource: 'auto'  // 'auto' | 'og' | 'html'
   };
   S.cards.set(id, card);
   renderCard(id);
   updateSaveBar();
   // Start meta fetch
   fetchMeta(url).then(meta => {
-    card.meta = meta;
+    // If card was pre-seeded by bookmarklet, only upgrade (don't downgrade)
+    if (card.meta?.fromBookmarklet) {
+      if (meta.title && !card.meta.title) card.meta.title = meta.title;
+      if (meta.description && !card.meta.description) card.meta.description = meta.description;
+      if (meta.langs?.length && !card.meta.langs?.length) card.meta.langs = meta.langs;
+    } else {
+      card.meta = meta;
+    }
     preSelectLists(card);
-    card.title = meta.title;
-    // Mark metaError if we only got a URL-derived fallback title and no description
-    if (!meta.description && S.corsErrCount > 0) {
+    card.title = card.meta.title;
+    if (!card.meta.description && S.corsErrCount > 0) {
       card.metaError = 'Metadata may be incomplete (CORS)';
     }
     renderCard(id);
@@ -1787,7 +1886,7 @@ function renderCard(id) {
 
   const domain = getDomain(card.url);
   const meta = card.meta;
-  const ttl = meta?.title || card.title || domain;
+  const ttl = getCardTitle(card);
   const desc = meta?.description || '';
   const langs = meta?.langs || [];
   const archiveUrl = getArchiveUrl(domain);
@@ -1881,7 +1980,14 @@ function renderCard(id) {
     <div class="card-head">
       <img id="${favId}" class="card-fav" src="" alt="">
       <div class="card-info">
-        <div class="card-ttl">${escH(ttl)}</div>
+        <div class="card-ttl">
+          ${escH(ttl)}
+          ${(card.meta?.titleOg || card.meta?.titleHtml) ? `<span class="title-src">
+            <button class="${card.titleSource==='auto'?'active':''}" onclick="setTitleSource('${id}','auto')" title="Auto (og → html)">AUTO</button>
+            ${card.meta?.titleOg ? `<button class="${card.titleSource==='og'?'active':''}" onclick="setTitleSource('${id}','og')" title="${escH(card.meta.titleOg)}">OG</button>` : ''}
+            ${card.meta?.titleHtml ? `<button class="${card.titleSource==='html'?'active':''}" onclick="setTitleSource('${id}','html')" title="${escH(card.meta.titleHtml)}">&lt;TITLE&gt;</button>` : ''}
+          </span>` : ''}
+        </div>
         <div class="card-url">${escH(card.url)}</div>
       </div>
       <div class="card-badges">${badges.join('')}</div>
@@ -2090,7 +2196,7 @@ async function saveCard(id) {
     const isV2 = (c.laApiVersion || 'v1') === 'v2';
     const payload = {
       url: card.url,
-      title: card.meta?.title || '',
+      title: getCardTitle(card) || '',
       description: card.meta?.description || '',
       lists: [...card.selectedLists],
       tags: [...card.selectedTags],
@@ -2620,6 +2726,144 @@ async function runMerge() {
   toast(`${t('toast_merge_done')}: ${totalMoved} ${t('merge_links_moved')}, ${totalDeleted} ${t('merge_lists_deleted')}`, errors ? 'w' : 's', 5000);
 }
 
+function setTitleSource(cardId, source) {
+  const card = S.cards.get(cardId);
+  if (!card) return;
+  card.titleSource = source;
+  // Re-render just the title area without full card re-render for speed
+  const el = $(cardId);
+  if (!el) return;
+  const ttlEl = el.querySelector('.card-ttl');
+  if (ttlEl) {
+    const newTitle = getCardTitle(card);
+    const m = card.meta;
+    ttlEl.innerHTML = escH(newTitle) +
+      ((m?.titleOg || m?.titleHtml) ? `<span class="title-src">
+        <button class="${source==='auto'?'active':''}" onclick="setTitleSource('${cardId}','auto')" title="Auto (og → html)">AUTO</button>
+        ${m?.titleOg ? `<button class="${source==='og'?'active':''}" onclick="setTitleSource('${cardId}','og')" title="${escH(m.titleOg)}">OG</button>` : ''}
+        ${m?.titleHtml ? `<button class="${source==='html'?'active':''}" onclick="setTitleSource('${cardId}','html')" title="${escH(m.titleHtml)}">&lt;TITLE&gt;</button>` : ''}
+      </span>` : '');
+  }
+  // Also update the title sent to LinkAce
+  card.title = getCardTitle(card);
+}
+
+
+// ╔══════════════════════════════════════════════════╗
+// ║  BOOKMARKLET                                     ║
+// ╚══════════════════════════════════════════════════╝
+
+// Auto-detect and store own URL on first visit
+(function detectSelfUrl() {
+  if (!LS.get('bm_self_url')) {
+    const u = location.href.split('?')[0].split('#')[0];
+    LS.set('bm_self_url', u);
+  }
+})();
+
+function buildBookmarkletCode(selfUrl, maxDesc, sendSel) {
+  if (!selfUrl || selfUrl === '#') return null;
+  // Minified bookmarklet — runs on any page, collects meta, opens LINKDROP
+  const code = `javascript:(function(){`
+    + `var u=encodeURIComponent(location.href);`
+    + `var ti=encodeURIComponent(document.title);`
+    + `var d='';`
+    + (sendSel ? `var sel=window.getSelection&&window.getSelection().toString().trim();if(sel){d=encodeURIComponent(sel.substring(0,${maxDesc}));}else{` : `{`)
+    + `var m=document.querySelector('meta[name="description"]')||document.querySelector('meta[property="og:description"]')||document.querySelector('meta[name="twitter:description"]');`
+    + `if(m)d=encodeURIComponent((m.getAttribute('content')||'').substring(0,${maxDesc}));`
+    + `}`
+    + `var base=${JSON.stringify(selfUrl)};`
+    + `var target=base+(base.indexOf('?')>=0?'&':'?')+'url='+u+'&title='+ti+(d?'&desc='+d:'')+'&focus=1';`
+    + `window.open(target,'_blank');`
+    + `})();`;
+  return code;
+}
+
+function renderBookmarklet() {
+  const selfUrl = $v('bm-self-url') || LS.get('bm_self_url') || '';
+  const maxDesc = parseInt($('bm-max-desc')?.value || '500');
+  const sendSel = $('bm-send-selection')?.checked !== false;
+
+  LS.set('bm_self_url', selfUrl);
+  LS.set('bm_max_desc', maxDesc);
+  LS.set('bm_send_selection', sendSel ? '1' : '0');
+
+  const code = selfUrl ? buildBookmarkletCode(selfUrl, maxDesc, sendSel) : null;
+  const preview = $('bm-code-preview');
+  const dragLink = $('bm-drag-link');
+  const hint = $('bm-url-hint');
+
+  if (!selfUrl) {
+    if (preview) preview.textContent = 'Configure the LINKDROP URL above first.';
+    if (dragLink) dragLink.removeAttribute('href');
+    return;
+  }
+
+  if (preview) preview.textContent = code;
+  if (dragLink) {
+    dragLink.href = code;
+    // Also set as drag data
+    dragLink.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('text/uri-list', code);
+      e.dataTransfer.setData('text/plain', code);
+    }, { once: false });
+  }
+  if (hint) hint.textContent = `Opens: ${selfUrl}?url=…&title=…&desc=…`;
+}
+
+function copyBookmarklet() {
+  const selfUrl = $v('bm-self-url') || LS.get('bm_self_url') || '';
+  const maxDesc = parseInt($('bm-max-desc')?.value || '500');
+  const sendSel = $('bm-send-selection')?.checked !== false;
+  const code = buildBookmarkletCode(selfUrl, maxDesc, sendSel);
+  if (!code) { toast('Configure the LINKDROP URL first', 'w'); return; }
+  navigator.clipboard.writeText(code).then(
+    () => toast('Bookmarklet copied to clipboard ✓', 's'),
+    () => { $('bm-code-preview').select?.(); toast('Copy the code manually', 'w'); }
+  );
+}
+
+// ── Handle incoming GET parameters from bookmarklet ──────────────────────────
+function handleGetParams() {
+  const params = new URLSearchParams(location.search);
+  const url   = params.get('url');
+  const title = params.get('title');
+  const desc  = params.get('desc');
+  const focus = params.get('focus');
+
+  if (!url) return;
+
+  // Clean the URL bar so refreshing doesn't re-add the card
+  try { history.replaceState({}, '', location.pathname + location.hash); } catch {}
+
+  // Create a card and immediately inject the provided metadata
+  const id = createCard(url);
+  const card = S.cards.get(id);
+  if (!card) return;
+
+  // Override meta with the values from the bookmarklet
+  // (fetchMeta runs async but we can pre-seed; fetchMeta result will
+  //  only overwrite if it gets a better description)
+  card.meta = {
+    title: title || card.meta?.title || '',
+    description: desc || '',
+    langs: detectLangs(title || '', desc || '', url),
+    isSOSite: SO_DOMAINS.some(d => url.includes(d)),
+    fromBookmarklet: true
+  };
+  card.title = card.meta.title;
+  preSelectLists(card);
+  renderCard(id);
+
+  // Focus and scroll to the card
+  if (focus === '1') {
+    window.focus();
+    setTimeout(() => $(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
+  }
+
+  toast(`Bookmarklet: "${title || url}"`, 'i', 3000);
+}
+
 // ╔══════════════════════════════════════════════════╗
 // ║  INIT                                            ║
 // ╚══════════════════════════════════════════════════╝
@@ -2648,6 +2892,22 @@ renderLangSwitcher();
 loadCfgToPanel();
 updateStats();
 updateNIMPreview();
+
+// Pre-fill bookmarklet URL field
+{
+  const bmUrl = LS.get('bm_self_url') || location.href.split('?')[0].split('#')[0];
+  const inp = $('bm-self-url');
+  if (inp && !inp.value) inp.value = bmUrl;
+  const maxD = $('bm-max-desc');
+  if (maxD) maxD.value = LS.get('bm_max_desc') || '500';
+  const selChk = $('bm-send-selection');
+  if (selChk) selChk.checked = LS.get('bm_send_selection') !== '0';
+  renderBookmarklet();
+}
+
+// Handle bookmarklet GET params (must run after LinkAce lists are available
+// or we do it now and lists will be loaded asynchronously later)
+handleGetParams();
 
 const ic = getCfg();
 if (ic.laUrl && ic.laToken) loadLinkAceData();
