@@ -95,6 +95,7 @@
   "toast_urls_pasted": "URL(s) pasted from clipboard",
   "toast_no_url": "No URL recognized",
   "toast_saved": "Saved",
+  "toast_updated": "Updated",
   "toast_save_fail": "Save failed",
   "toast_la_connected": "LinkAce connected ✓",
   "toast_nim_connected": "NIM API connected ✓",
@@ -106,12 +107,15 @@
   "lbl_analyzing": "ANALYZING",
   "lbl_ready": "READY",
   "lbl_saved": "SAVED",
+  "lbl_updated": "UPDATED",
+  "lbl_existing": "EXISTS",
   "lbl_queued": "IN QUEUE",
   "lbl_nim_err": "NIM ERR",
   "lbl_cors_err": "CORS ERR",
   "lbl_keep": "KEEP",
   "lbl_merge_into": "MERGE INTO",
   "btn_save_to_linkace": "↑ Save",
+  "btn_update_to_linkace": "↑ Update",
   "btn_save_all_short": "SAVE ALL",
   "btn_discard_short": "✕",
   "btn_load_external": "👁 Load external",
@@ -207,6 +211,7 @@
   "toast_urls_pasted": "URL(s) aus Zwischenablage",
   "toast_no_url": "Kein URL erkannt",
   "toast_saved": "Gespeichert",
+  "toast_updated": "Aktualisiert",
   "toast_save_fail": "Speichern fehlgeschlagen",
   "toast_la_connected": "LinkAce verbunden ✓",
   "toast_nim_connected": "NIM API verbunden ✓",
@@ -218,12 +223,15 @@
   "lbl_analyzing": "ANALYSIERT",
   "lbl_ready": "BEREIT",
   "lbl_saved": "GESPEICHERT",
+  "lbl_updated": "AKTUALISIERT",
+  "lbl_existing": "VORHANDEN",
   "lbl_queued": "IN QUEUE",
   "lbl_nim_err": "NIM FEHLER",
   "lbl_cors_err": "CORS FEHLER",
   "lbl_keep": "BEHALTEN",
   "lbl_merge_into": "ZUSAMMENFÜHREN",
   "btn_save_to_linkace": "↑ Speichern",
+  "btn_update_to_linkace": "↑ Aktualisieren",
   "btn_save_all_short": "ALLE SPEICHERN",
   "btn_discard_short": "✕",
   "btn_load_external": "👁 Extern laden",
@@ -325,6 +333,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .link-card.saved{border-color:var(--amber);box-shadow:0 0 14px var(--amber-dim)}
 .link-card.err-422{border-color:#3b82f6;box-shadow:0 0 14px #3b82f618}
 .link-card.err-other{border-color:var(--red);box-shadow:0 0 14px var(--red-dim)}
+.link-card.existing{border-color:var(--pink);box-shadow:0 0 14px var(--pink-dim)}
 .link-card.hovered-q{border-color:var(--amber)!important;box-shadow:0 0 12px var(--amber-dim)!important}
 .card-head{padding:13px 14px 11px;display:flex;align-items:flex-start;gap:10px;border-bottom:1px solid var(--border)}
 .card-fav{width:18px;height:18px;border-radius:3px;flex-shrink:0;margin-top:2px;object-fit:contain}
@@ -345,6 +354,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .badge.cors-err{background:var(--red-dim);color:var(--red);border:1px solid var(--red)}
 .badge.nim-429{background:var(--pink-dim);color:var(--pink);border:1px solid var(--pink)}
 .badge.dup-422{background:#1e3a5f;color:#60a5fa;border:1px solid #3b82f6}
+.badge.existing-b{background:var(--pink-dim);color:var(--pink);border:1px solid var(--pink)}
 .badge.lang{background:#1a1a2e;color:#818cf8;border:1px solid #3730a3;font-size:8px}
 .card-body{padding:12px 14px}
 .ai-summary{font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:12px;min-height:18px}
@@ -1222,7 +1232,8 @@ const S = {
   nimRunning: false,
   corsErrCount: 0,
   corsModalShown: false,
-  savedToday: 0
+  savedToday: 0,
+  existingLinksByUrl: new Map() // normalizedUrl -> {id, url, lists:[ids], tags:[names]}
 };
 let cardN = 0;
 
@@ -1502,9 +1513,78 @@ async function loadLinkAceData() {
     renderLATags();
     // Re-render all cards to reflect new lists
     for (const id of S.cards.keys()) renderCard(id);
+    // Import existing links (for duplicate detection / update-instead-of-create)
+    loadExistingLinks();
   } catch(e) {
     dot.className = 'ind-dot err';
     toast(`LinkAce: ${e.message}`,'e',5000);
+  }
+}
+
+// Normalizes a URL for comparison (resolves relative parts, trailing slash, etc.)
+function normalizeUrl(url) {
+  try { return new URL(url).href; } catch { return (url||'').trim(); }
+}
+
+// Extracts the list of list-IDs from a LinkAce link resource (handles both
+// nested {id,name} objects and plain id arrays, depending on API version).
+function extractLinkListIds(item) {
+  const raw = item.lists || item.list_ids || [];
+  return raw.map(x => (x && typeof x === 'object') ? x.id : x).filter(x => x != null);
+}
+
+// Extracts the list of tag names from a LinkAce link resource (handles both
+// nested {id,name} objects and plain string arrays).
+function extractLinkTagNames(item) {
+  const raw = item.tags || item.tag_names || [];
+  return raw.map(x => (x && typeof x === 'object') ? x.name : x).filter(Boolean);
+}
+
+// Imports all existing LinkAce links into S.existingLinksByUrl so incoming
+// links can be matched against them (duplicate detection → update instead
+// of create).
+async function loadExistingLinks() {
+  const c = getCfg();
+  if (!c.laUrl || !c.laToken) return;
+  const map = new Map();
+  try {
+    const perPage = 200;
+    let page = 1;
+    while (true) {
+      const res = await laReq(`/links?per_page=${perPage}&page=${page}`);
+      const items = res.data || res || [];
+      for (const item of items) {
+        if (!item.url) continue;
+        map.set(normalizeUrl(item.url), {
+          id: item.id,
+          url: item.url,
+          lists: extractLinkListIds(item),
+          tags: extractLinkTagNames(item)
+        });
+      }
+      const lastPage = res.meta?.last_page || res.last_page || null;
+      const hasMore = lastPage ? page < lastPage : items.length === perPage;
+      if (!hasMore) break;
+      page++;
+      if (page > 500) break; // safety cap
+    }
+    S.existingLinksByUrl = map;
+    toast(`${map.size} vorhandene Links importiert`, 'i', 3000);
+    // Re-check cards already on screen against the freshly imported set
+    for (const [id, card] of S.cards.entries()) {
+      if (card.saved) continue;
+      const existing = S.existingLinksByUrl.get(normalizeUrl(card.url)) || null;
+      if (existing && !card.existingLink) {
+        card.existingLink = existing;
+        if (!card.manuallyEdited) {
+          existing.lists.forEach(lid => card.selectedLists.add(lid));
+          existing.tags.forEach(tg => card.selectedTags.add(tg));
+        }
+        renderCard(id);
+      }
+    }
+  } catch(e) {
+    toast(`Vorhandene Links konnten nicht geladen werden: ${e.message}`, 'w', 5000);
   }
 }
 
@@ -1814,13 +1894,16 @@ Respond ONLY with valid JSON, no markdown, no explanation:
 // ╚══════════════════════════════════════════════════╝
 function createCard(url) {
   const id = `c${++cardN}`;
+  const existing = S.existingLinksByUrl.get(normalizeUrl(url)) || null;
   const card = {
     id, url, meta: null, status: 'queued',
-    selectedLists: new Set(), selectedTags: new Set(),
+    selectedLists: new Set(existing ? existing.lists : []),
+    selectedTags: new Set(existing ? existing.tags : []),
     aiSuggestion: null, nimError: null, nim429: false, nimSuccess: false, nimSkipped: false,
-    externalLoaded: false, manuallyEdited: false, saved: false,
+    externalLoaded: false, manuallyEdited: !!existing, saved: false,
     saveError: null, saveErrorMsg: null, metaError: null,
-    titleSource: 'auto'  // 'auto' | 'og' | 'html'
+    titleSource: 'auto',  // 'auto' | 'og' | 'html'
+    existingLink: existing // set when this URL already exists in LinkAce → update instead of create
   };
   S.cards.set(id, card);
   renderCard(id);
@@ -1906,10 +1989,11 @@ function renderCard(id) {
   }
 
   // Set error class
-  el.classList.remove('saved','err-422','err-other');
+  el.classList.remove('saved','err-422','err-other','existing');
   if (card.saved) el.classList.add('saved');
   else if (card.saveError === 422) el.classList.add('err-422');
   else if (card.saveError) el.classList.add('err-other');
+  else if (card.existingLink) el.classList.add('existing');
 
   const domain = getDomain(card.url);
   const meta = card.meta;
@@ -1922,7 +2006,8 @@ function renderCard(id) {
   const badges = [];
   if (card.status === 'queued') badges.push(`<span class="badge queued">${t('lbl_queued')}</span>`);
   else if (card.status === 'ready' && !card.saved && !card.saveError) badges.push(`<span class="badge ready">${t('lbl_ready')}</span>`);
-  else if (card.saved) badges.push(`<span class="badge saved-b">✓ ${t('lbl_saved')}</span>`);
+  else if (card.saved) badges.push(`<span class="badge saved-b">✓ ${card.existingLink ? t('lbl_updated') : t('lbl_saved')}</span>`);
+  if (card.existingLink && !card.saved) badges.push(`<span class="badge existing-b" title="Bereits in LinkAce (#${card.existingLink.id}) — Speichern aktualisiert den Link">↺ ${t('lbl_existing')}</span>`);
   if (card.saveError === 422) badges.push(`<span class="badge dup-422" title="${card.saveErrorMsg||''}">⊕ ${t('lbl_duplicate')}</span>`);
   else if (card.saveError && card.saveError !== 422) badges.push(`<span class="badge err-b" title="${escH(card.saveErrorMsg||'')}">✕ ${card.saveError}</span>`);
   if (card.nim429) badges.push(`<span class="badge nim-429" title="${escH(card.nimError)}">NIM 429</span>`);
@@ -1995,7 +2080,7 @@ function renderCard(id) {
   const inQueue = S.nimQueue.some(x=>x.id===id);
   let footerBtns = `
     <button class="btn btn-sv" onclick="saveCard('${id}')" ${isAnalyzing?'disabled':''} aria-label="Save to LinkAce">
-      ${card.saved ? '✓ ' + t('lbl_saved') : t('btn_save_to_linkace')}
+      ${card.saved ? '✓ ' + (card.existingLink ? t('lbl_updated') : t('lbl_saved')) : (card.existingLink ? t('btn_update_to_linkace') : t('btn_save_to_linkace'))}
     </button>
     <button class="btn btn-disc" onclick="discardCard('${id}')">${t('btn_discard_short')}</button>
     ${retryBtns}`;
@@ -2232,7 +2317,12 @@ async function saveCard(id) {
     };
     if (isV2) payload.visibility = 1;
     else payload.is_private = false;
-    await laReq('/links', 'POST', payload);
+    const isUpdate = !!card.existingLink;
+    if (isUpdate) {
+      await laReq(`/links/${card.existingLink.id}`, 'PUT', payload);
+    } else {
+      await laReq('/links', 'POST', payload);
+    }
     card.saved = true;
     card.status = 'ready';
     // Bump usage for all selected lists
@@ -2241,7 +2331,7 @@ async function saveCard(id) {
     LS.set('saved_today', S.savedToday);
     renderCard(id);
     updateStats();
-    toast(`${t('toast_saved')}: ${getDomain(card.url)}`,'s');
+    toast(`${isUpdate ? t('toast_updated') : t('toast_saved')}: ${getDomain(card.url)}`,'s');
   } catch(e) {
     card.status = 'ready';
     $(id)?.classList.remove('saving');
