@@ -572,19 +572,30 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
       <div class="fg"><label class="fl" data-i18n="lbl_api_key">API Key</label><input class="fi" id="nim-key" type="password" placeholder="nvapi-..." autocomplete="off"></div>
       <div class="fg"><label class="fl" data-i18n="lbl_model">Model</label>
         <select class="fi" id="nim-model">
-          <optgroup label="Meta LLaMA 3.1">
-            <option value="meta/llama-3.1-8b-instruct">meta/llama-3.1-8b-instruct (fast)</option>
-            <option value="meta/llama-3.1-70b-instruct">meta/llama-3.1-70b-instruct</option>
+          <optgroup label="ChatGPT">
+            <option value="openai/gpt-oss-20b">openai/gpt-oss-20b</option>
           </optgroup>
-          <optgroup label="Meta LLaMA 3.3">
-            <option value="meta/llama-3.3-70b-instruct">meta/llama-3.3-70b-instruct</option>
+          <optgroup label="Meta">
+            <option value="meta/llama-guard-4-12b">meta/llama-guard-4-12b</option>
+            <option value="meta/llama-3.2-11b-vision-instruct">meta/llama-3.2-11b-vision-instruct</option>
+            <option value="meta/llama-3.2-90b-vision-instruct">meta/llama-3.2-90b-vision-instruct</option>
+            <option value="meta/muse-glimmer-30b">meta/muse-glimmer-30b</option>
           </optgroup>
-          <optgroup label="Nvidia Nemotron">
-            <option value="nvidia/llama-3.1-nemotron-70b-instruct">nvidia/llama-3.1-nemotron-70b-instruct</option>
-            <option value="nvidia/llama-3.3-nemotron-super-49b-v1.5">nvidia/llama-3.3-nemotron-super-49b-v1.5</option>
+          <optgroup label="Nvidia">
+            <option value="nvidia/riva-translate-4b-instruct-v2">nvidia/riva-translate-4b-instruct-v2</option>
+            <option value="nvidia/nemotron-3.5-lightning-30b-a3b">nvidia/nemotron-3.5-lightning-30b-a3b</option>
           </optgroup>
+          <optgroup label="MoonShotAI">
+            <option value="moonshotai/kimi-k3">moonshotai/kimi-k3</option>
+          </optgroup>
+          <optgroup label="DeepSeek">
+            <option value="deepseek-ai/deepseek-v4-flash-0731">deepseek-ai/deepseek-v4-flash-0731</option>
+            <option value="deepseek-ai/deepseek-v4-pro-0813">deepseek-ai/deepseek-v4-pro-0813</option>
+          </optgroup>
+          <optgroup label="Google">
+            <option value="google/gemma-4-31b-it">google/gemma-4-31b-it</option>
           <optgroup label="Mistral">
-            <option value="mistralai/mixtral-8x7b-instruct">mistralai/mixtral-8x7b-instruct</option>
+            <option value="mistralai/mistral-nemotron">mistralai/mistral-nemotron</option>
           </optgroup>
           <option value="custom">Custom model…</option>
         </select>
