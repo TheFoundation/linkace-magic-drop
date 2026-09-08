@@ -1607,7 +1607,7 @@ async function testNIM() {
     });
     if (res.status === 404) {
       dot.className = 'ind-dot err';
-      toast(`NIM 404: Endpoint nicht gefunden. Möglicherweise unterstützt das Modell "${getModel()}" diesen Request nicht oder der CORS-Proxy leitet falsch weiter.`,'e',8000);
+      toast(`NIM 404: Endpoint not found , model - "${getModel()}" may not support request or CORS-Proxy forwards errnous.`,'e',8000);
       return;
     }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1751,7 +1751,7 @@ Rules:
 - Tags may be new (not in candidates) if highly relevant — especially programming languages.
 - Prefer programming language tags derived from the title/description.
 - If a list and a tag have the same name and both fit, select both.
-- Max 5 lists, max 8 tags.
+- Max 10 lists, max 10 tags.
 
 Respond ONLY with valid JSON, no markdown, no explanation:
 {"suggested_lists":[{"id":<number>,"name":"<string>","reason":"<short>"}],"suggested_tags":["<tag>"]}`;
@@ -1765,10 +1765,14 @@ Respond ONLY with valid JSON, no markdown, no explanation:
     });
 
     if (res.status === 404) {
-      card.nimError = `404: Modell "${getModel()}" unterstützt diesen Request möglicherweise nicht`;
+      card.nimError = `404: Modell "${getModel()}" does possibly not support this request`;
       card.status = 'ready';
       dot.className = 'ind-dot err';
-    } else if (!res.ok) {
+    } else if (res.status === 410) {
+      card.nimError = `410: Modell "${getModel()}" is outdated`;
+      card.status = 'ready';
+      dot.className = 'ind-dot err';
+    }  else if (!res.ok) {
       throw new Error(`HTTP ${res.status}`);
     } else {
       const data = await res.json();
