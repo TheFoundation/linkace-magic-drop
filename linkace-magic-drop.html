@@ -258,6 +258,8 @@
   --violet:#7c3aed;--violet-dim:#7c3aed1a;--violet-glow:#7c3aed55;
   --green:#00e57a;--green-dim:#00e57a1a;--red:#ff3d5a;--red-dim:#ff3d5a1a;
   --amber:#f59e0b;--amber-dim:#f59e0b1a;
+--blue:#3b82f6;--blue-dim:#3b82f61a;
+--pink:#ff4fd8;--pink-dim:#ff4fd81a;
   --text:#e8e8f0;--text2:#9090a8;--text3:#5a5a72;
   --fn:'Syne',sans-serif;--fm:'JetBrains Mono',monospace;
 }
@@ -314,7 +316,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .kbdi{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--text3);background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:7px 12px}
 
 /* ── CARDS ── */
-#cards-grid{padding:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:14px;align-items:start}
+#cards-grid{padding:20px 20px 100px;display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:14px;align-items:start}
 
 /* ── CARD ── */
 .link-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;animation:cin .35s cubic-bezier(.16,1,.3,1) both;transition:border-color .2s,box-shadow .2s;position:relative}
@@ -341,6 +343,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .badge.err-b{background:var(--red-dim);color:var(--red);border:1px solid var(--red)}
 .badge.queued{background:var(--amber-dim);color:var(--amber);border:1px solid var(--amber)}
 .badge.cors-err{background:var(--red-dim);color:var(--red);border:1px solid var(--red)}
+.badge.nim-429{background:var(--pink-dim);color:var(--pink);border:1px solid var(--pink)}
 .badge.dup-422{background:#1e3a5f;color:#60a5fa;border:1px solid #3b82f6}
 .badge.lang{background:#1a1a2e;color:#818cf8;border:1px solid #3730a3;font-size:8px}
 .card-body{padding:12px 14px}
@@ -376,6 +379,8 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .btn-nim-now:hover{background:var(--violet);color:#fff}
 .btn-retry{background:transparent;border:1px solid var(--amber);color:var(--amber);font-size:10px;padding:4px 9px}
 .btn-retry:hover{background:var(--amber);color:#000}
+.btn-retry-ok{background:transparent;border:1px solid var(--blue);color:var(--blue);font-size:10px;padding:4px 9px}
+.btn-retry-ok:hover{background:var(--blue);color:#fff}
 .typing-dots{display:inline-flex;gap:4px;align-items:center}
 .typing-dots span{width:5px;height:5px;border-radius:50%;background:var(--violet);animation:td 1.2s ease-in-out infinite}
 .typing-dots span:nth-child(2){animation-delay:.2s}
@@ -502,7 +507,7 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
 /* scrollbar */
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 ::-webkit-scrollbar-thumb:hover{background:var(--text3)}
-@media(max-width:600px){#cards-grid{grid-template-columns:1fr;padding:12px}#app.panel-open{margin-right:0}#panel{width:100%}.stat-txt{display:none}}
+@media(max-width:600px){#cards-grid{grid-template-columns:1fr;padding:12px 12px 100px}#app.panel-open{margin-right:0}#panel{width:100%}.stat-txt{display:none}}
 </style>
 </head>
 <body>
@@ -1584,7 +1589,7 @@ function renderLALists() {
   const mb = $('btn-merge');
   if (mb) {
     mb.style.display = dupeCount > 0 ? '' : 'none';
-    mb.textContent = `⊕ ${dupeCount} gleichnamige Gruppe${dupeCount>1?'n':''} zusammenführen`;
+    mb.textContent = `⊕ ${dupeCount} merge same-named ${dupeCount>1?'n':''} group;
   }
 }
 
@@ -1722,6 +1727,7 @@ async function runNIMForCard(cardId) {
   }
 
   card.nimStatus = 'running';
+  card.nim429 = false;
   const dot = $('d-nim');
   dot.className = 'ind-dot loading';
 
@@ -1761,7 +1767,7 @@ Respond ONLY with valid JSON, no markdown, no explanation:
 
     const res = await fetch(endpoint, {
       method:'POST', headers,
-      body: JSON.stringify({ model: getModel(), max_tokens: 400, temperature: 0.15, messages:[{role:'user',content:prompt}] })
+      body: JSON.stringify({ model: getModel(), max_tokens: 10000, temperature: 0.15, messages:[{role:'user',content:prompt}] })
     });
 
     if (res.status === 404) {
@@ -1772,7 +1778,12 @@ Respond ONLY with valid JSON, no markdown, no explanation:
       card.nimError = `410: Modell "${getModel()}" is outdated`;
       card.status = 'ready';
       dot.className = 'ind-dot err';
-    }  else if (!res.ok) {
+    } else if (res.status === 429) {
+      card.nimError = `429: Rate limit exceeded`;
+      card.nim429 = true;
+      card.status = 'ready';
+      dot.className = 'ind-dot err';
+    } else if (!res.ok) {
       throw new Error(`HTTP ${res.status}`);
     } else {
       const data = await res.json();
@@ -1785,6 +1796,7 @@ Respond ONLY with valid JSON, no markdown, no explanation:
         parsed.suggested_lists?.forEach(l => card.selectedLists.add(l.id));
         parsed.suggested_tags?.forEach(t => card.selectedTags.add(t));
       }
+      card.nimSuccess = true;
       dot.className = 'ind-dot ok';
     }
   } catch(e) {
@@ -1805,7 +1817,7 @@ function createCard(url) {
   const card = {
     id, url, meta: null, status: 'queued',
     selectedLists: new Set(), selectedTags: new Set(),
-    aiSuggestion: null, nimError: null, nimSkipped: false,
+    aiSuggestion: null, nimError: null, nim429: false, nimSuccess: false, nimSkipped: false,
     externalLoaded: false, manuallyEdited: false, saved: false,
     saveError: null, saveErrorMsg: null, metaError: null,
     titleSource: 'auto'  // 'auto' | 'og' | 'html'
@@ -1913,7 +1925,8 @@ function renderCard(id) {
   else if (card.saved) badges.push(`<span class="badge saved-b">✓ ${t('lbl_saved')}</span>`);
   if (card.saveError === 422) badges.push(`<span class="badge dup-422" title="${card.saveErrorMsg||''}">⊕ ${t('lbl_duplicate')}</span>`);
   else if (card.saveError && card.saveError !== 422) badges.push(`<span class="badge err-b" title="${escH(card.saveErrorMsg||'')}">✕ ${card.saveError}</span>`);
-  if (card.nimError) badges.push(`<span class="badge cors-err" title="${escH(card.nimError)}">${t('lbl_nim_err')}</span>`);
+  if (card.nim429) badges.push(`<span class="badge nim-429" title="${escH(card.nimError)}">NIM 429</span>`);
+  else if (card.nimError) badges.push(`<span class="badge cors-err" title="${escH(card.nimError)}">${t('lbl_nim_err')}</span>`);
   if (card.metaError) badges.push(`<span class="badge cors-err" title="${escH(card.metaError)}">META ERR</span>`);
   langs.forEach(l => badges.push(`<span class="badge lang">${escH(l)}</span>`));
 
@@ -1972,7 +1985,8 @@ function renderCard(id) {
   // Retry buttons
   let retryBtns = '';
   if (card.metaError) retryBtns += `<button class="btn btn-retry" onclick="retryMeta('${id}')">↺ Meta</button>`;
-  if (card.nimError) retryBtns += `<button class="btn btn-retry" onclick="retryNIM('${id}')">↺ NIM</button>`;
+  const nimBtnOk = !card.nimError && card.nimSuccess;
+  retryBtns += `<button class="btn ${nimBtnOk ? 'btn-retry-ok' : 'btn-retry'}" onclick="retryNIM('${id}')">↺ NIM</button>`;
   if (card.saveError) retryBtns += `<button class="btn btn-retry" onclick="saveCard('${id}')">↺ ${t('lbl_save')}</button>`;
 
   // Footer buttons
@@ -2278,6 +2292,7 @@ async function retryNIM(cardId) {
   const card = S.cards.get(cardId);
   if (!card) return;
   card.nimError = null;
+  card.nim429 = false;
   card.status = 'queued';
   renderCard(cardId);
   enqueueNIM(cardId, 1); // priority
@@ -2938,7 +2953,7 @@ if (ic.nimKey) $('d-nim').className = 'ind-dot ok';
     <div id="merge-groups" style="max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;margin-bottom:16px"></div>
     <div id="merge-progress" style="display:none;font-size:11px;color:var(--text2);background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:10px;font-family:var(--fm);line-height:1.9;max-height:180px;overflow-y:auto"></div>
     <div class="modal-actions" style="margin-top:0">
-      <button class="btn btn-disc" id="merge-close-btn" onclick="document.getElementById('merge-modal').classList.remove('open')">Schließen</button>
+      <button class="btn btn-disc" id="merge-close-btn" onclick="document.getElementById('merge-modal').classList.remove('open')">Close</button>
       <button class="btn btn-sva" id="merge-run-btn" onclick="runMerge()"><span data-i18n="merge_run">⊕ Merge</span></button>
     </div>
   </div>
