@@ -324,7 +324,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .kbdi{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--text3);background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:7px 12px}
 
 /* ── CARDS ── */
-#cards-grid{padding:20px 20px 100px;display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:14px;align-items:start}
+#cards-grid{padding:20px 20px 150px;display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:14px;align-items:start}
 
 /* ── CARD ── */
 .link-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;animation:cin .35s cubic-bezier(.16,1,.3,1) both;transition:border-color .2s,box-shadow .2s;position:relative}
@@ -452,6 +452,15 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
 /* ── SAVE ALL / DISMISS BAR ── */
 #btm-bar{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:9px 14px;display:flex;align-items:center;gap:10px;z-index:150;transition:transform .3s cubic-bezier(.16,1,.3,1),opacity .3s;opacity:0;box-shadow:0 8px 32px #00000088;backdrop-filter:blur(12px)}
 #btm-bar.vis{transform:translateX(-50%) translateY(0);opacity:1}
+#nim-log-bar{position:fixed;bottom:0;left:0;right:0;background:#0a0a0cd9;backdrop-filter:blur(8px);border-top:1px solid var(--border2);z-index:140;padding:5px 14px;font-family:var(--fm);font-size:10.5px;line-height:1.55;color:var(--text3);display:none}
+.nim-log-line{display:flex;gap:8px;white-space:nowrap;overflow:hidden}
+.nim-log-ts{color:var(--text3);flex-shrink:0}
+.nim-log-code{flex-shrink:0;font-weight:700;min-width:28px}
+.nim-log-code.nim-log-ok{color:var(--cyan)}
+.nim-log-code.nim-log-err{color:var(--red)}
+.nim-log-model{color:#c4b5fd;flex-shrink:0;max-width:180px;overflow:hidden;text-overflow:ellipsis}
+.nim-log-dur{color:var(--amber);flex-shrink:0}
+.nim-log-url{color:var(--text2);overflow:hidden;text-overflow:ellipsis}
 
 
 /* ── TOASTS ── */
@@ -517,7 +526,7 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
 /* scrollbar */
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 ::-webkit-scrollbar-thumb:hover{background:var(--text3)}
-@media(max-width:600px){#cards-grid{grid-template-columns:1fr;padding:12px 12px 100px}#app.panel-open{margin-right:0}#panel{width:100%}.stat-txt{display:none}}
+@media(max-width:600px){#cards-grid{grid-template-columns:1fr;padding:12px 12px 150px}#app.panel-open{margin-right:0}#panel{width:100%}.stat-txt{display:none}}
 </style>
 </head>
 <body>
@@ -852,6 +861,7 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
   <span id="btm-cnt" style="font-size:11px;color:var(--text2)">0 bereit</span>
   <button class="btn btn-sva" onclick="saveAll()">↑ <span data-i18n="btn_saveall">SAVE ALL</span></button>
 </div>
+<div id="nim-log-bar"></div>
 <div id="disc-btns" style="position:fixed;bottom:22px;left:22px;display:none;gap:6px;z-index:150;">
   <button class="disc-btn" id="disc-all" onclick="discardAll()" style="background:transparent;border:1px solid var(--border2);color:var(--text3);padding:7px 13px;border-radius:6px;cursor:pointer;font-family:var(--fm);font-size:11px;transition:all .2s;" onmouseenter="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseleave="this.style.borderColor='var(--border2)';this.style.color='var(--text3)'">✕ <span data-i18n="btn_discardall">Discard all</span></button>
   <button class="disc-btn" id="disc-done" onclick="discardDone()" style="background:transparent;border:1px solid var(--border2);color:var(--text3);padding:7px 13px;border-radius:6px;cursor:pointer;font-family:var(--fm);font-size:11px;transition:all .2s;" onmouseenter="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'" onmouseleave="this.style.borderColor='var(--border2)';this.style.color='var(--text3)'">✓ <span data-i18n="btn_discarddone">Discard saved</span></button>
@@ -1230,6 +1240,8 @@ const S = {
   cards: new Map(),
   nimQueue: [],     // [{id, priority}]
   nimRunning: false,
+  nimActiveCount: 0, // number of NIM requests currently in flight (max NIM_MAX_CONCURRENT)
+  nimLog: [],        // last NIM call results: {timestamp, httpCode, model, duration, url}
   corsErrCount: 0,
   corsModalShown: false,
   savedToday: 0,
@@ -1580,6 +1592,15 @@ async function loadExistingLinks() {
           existing.lists.forEach(lid => card.selectedLists.add(lid));
           existing.tags.forEach(tg => card.selectedTags.add(tg));
         }
+        // If NIM hasn't run for this card yet, cancel/skip it — existing
+        // links shouldn't get NIM auto-started.
+        if (card.status === 'queued' && !card.nimSuccess) {
+          const wasQueued = S.nimQueue.some(x => x.id === id);
+          S.nimQueue = S.nimQueue.filter(x => x.id !== id);
+          if (wasQueued) updateQueueBar();
+          card.status = 'ready';
+          card.nimSkipped = true;
+        }
         renderCard(id);
       }
     }
@@ -1722,7 +1743,7 @@ function enqueueNIM(cardId, priority=0) {
     S.nimQueue.push({ id: cardId, paused: false });
   }
   updateQueueBar();
-  if (!S.nimRunning) processQueue();
+  processQueue(); // safe to call anytime — only launches workers up to the concurrency limit
 }
 
 function pauseCardInQueue(cardId) {
@@ -1751,39 +1772,48 @@ function promoteCard(cardId) {
     S.nimQueue = S.nimQueue.filter(x => x.id !== cardId);
     S.nimQueue.unshift({ id: cardId, paused: false });
     updateQueueBar();
-    if (!S.nimRunning) processQueue();
+    processQueue(); // safe to call anytime — only launches workers up to the concurrency limit
     toast('Link in NIM-Queue vorgezogen','i',2000);
   }
 }
 
+const NIM_MAX_CONCURRENT = 3;
+
 async function processQueue() {
-  if (S.nimQueue.length === 0) { S.nimRunning = false; updateQueueBar(); return; }
-  S.nimRunning = true;
-  const item = S.nimQueue.find(x => !x.paused);
-  if (!item) { S.nimRunning = false; updateQueueBar(); return; }
-  S.nimQueue = S.nimQueue.filter(x => x.id !== item.id);
-  item.processing = true;
+  // Launch additional parallel NIM workers up to the concurrency limit.
+  while (S.nimActiveCount < NIM_MAX_CONCURRENT) {
+    const idx = S.nimQueue.findIndex(x => !x.paused);
+    if (idx === -1) break;
+    const item = S.nimQueue.splice(idx, 1)[0];
+    item.processing = true;
+    S.nimActiveCount++;
+    runQueueItem(item); // fire-and-forget worker; it re-invokes processQueue when done
+  }
+  S.nimRunning = S.nimActiveCount > 0;
+  updateQueueBar();
+}
 
-  updateQueueBar(item.id);
+async function runQueueItem(item) {
   const card = S.cards.get(item.id);
-  if (!card) { processQueue(); return; }
-
-  try {
-    const c = getCfg();
-    const nsfwMode = c.nsfwMode;
-    if (nsfwMode && !card.externalLoaded) {
-      // Don't call NIM in NSFW mode until external is explicitly requested
-      card.status = 'ready';
-      card.nimSkipped = true;
-      renderCard(item.id);
-      updateSaveBar();
-    } else {
-      await runNIMForCard(item.id);
-    }
-  } catch(e) { console.error('Queue error', e); }
+  if (card) {
+    try {
+      const c = getCfg();
+      const nsfwMode = c.nsfwMode;
+      if (nsfwMode && !card.externalLoaded) {
+        // Don't call NIM in NSFW mode until external is explicitly requested
+        card.status = 'ready';
+        card.nimSkipped = true;
+        renderCard(item.id);
+        updateSaveBar();
+      } else {
+        await runNIMForCard(item.id);
+      }
+    } catch(e) { console.error('Queue error', e); }
+  }
 
   // Small delay between NIM calls
   await delay(300);
+  S.nimActiveCount--;
   processQueue();
 }
 
@@ -1810,6 +1840,10 @@ async function runNIMForCard(cardId) {
   card.nim429 = false;
   const dot = $('d-nim');
   dot.className = 'ind-dot loading';
+
+  const startTime = performance.now();
+  let httpCode = null;
+  const modelUsed = getModel();
 
   try {
     const langs = card.meta?.langs?.join(', ') || '';
@@ -1849,6 +1883,7 @@ Respond ONLY with valid JSON, no markdown, no explanation:
       method:'POST', headers,
       body: JSON.stringify({ model: getModel(), max_tokens: 10000, temperature: 0.15, messages:[{role:'user',content:prompt}] })
     });
+    httpCode = res.status;
 
     if (res.status === 404) {
       card.nimError = `404: Modell "${getModel()}" does possibly not support this request`;
@@ -1882,11 +1917,43 @@ Respond ONLY with valid JSON, no markdown, no explanation:
   } catch(e) {
     card.nimError = e.message;
     dot.className = 'ind-dot err';
+    if (httpCode == null) {
+      const m = e.message.match(/^HTTP (\d+)/);
+      httpCode = m ? parseInt(m[1]) : 'ERR';
+    }
   }
+
+  const durationSec = ((performance.now() - startTime) / 1000).toFixed(2);
+  logNIMResult({
+    timestamp: new Date(),
+    httpCode: httpCode == null ? 200 : httpCode,
+    model: modelUsed,
+    duration: durationSec,
+    url: card.url
+  });
 
   card.status = 'ready';
   renderCard(cardId);
   updateSaveBar();
+}
+
+// Keeps a rolling log of the last 2 NIM API calls, shown in the bottom status line.
+function logNIMResult(entry) {
+  S.nimLog.unshift(entry);
+  if (S.nimLog.length > 2) S.nimLog.length = 2;
+  renderNimLog();
+}
+
+function renderNimLog() {
+  const el = $('nim-log-bar');
+  if (!el) return;
+  if (S.nimLog.length === 0) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = S.nimLog.map(e => {
+    const ts = e.timestamp.toLocaleTimeString();
+    const codeClass = (e.httpCode === 200) ? 'nim-log-ok' : 'nim-log-err';
+    return `<div class="nim-log-line"><span class="nim-log-ts">${ts}</span><span class="nim-log-code ${codeClass}">${escH(String(e.httpCode))}</span><span class="nim-log-model">${escH(e.model||'—')}</span><span class="nim-log-dur">${e.duration}s</span><span class="nim-log-url" title="${escH(e.url)}">${escH(e.url)}</span></div>`;
+  }).join('');
 }
 
 // ╔══════════════════════════════════════════════════╗
@@ -1924,7 +1991,14 @@ function createCard(url) {
       card.metaError = 'Metadata may be incomplete (CORS)';
     }
     renderCard(id);
-    if (!getCfg().nsfwMode) {
+    if (card.existingLink) {
+      // Existing links keep their current lists/tags — don't auto-run NIM,
+      // the "↺ NIM" button lets the user trigger it manually if desired.
+      card.status = 'ready';
+      card.nimSkipped = true;
+      renderCard(id);
+      updateSaveBar();
+    } else if (!getCfg().nsfwMode) {
       card.status = 'queued';
       renderCard(id);
       enqueueNIM(id);
