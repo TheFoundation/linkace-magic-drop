@@ -1872,6 +1872,10 @@ Rules:
 - Prefer programming language tags derived from the title/description.
 - If a list and a tag have the same name and both fit, select both.
 - Max 10 lists, max 10 tags.
+- Verification (apply to every candidate list/tag before you include it):
+  1. Decide whether the candidate is a category term — a general topic/type label that classifies the bookmark (e.g. "cloud-storage", "programming-language", "news") — rather than a literal keyword.
+  2. If it IS a category term and it correctly classifies this bookmark, suggest it even if none of its words appear in the description, URL, or metadata (title, detected languages/frameworks).
+  3. If it is NOT a category term, only suggest it when at least one of its words literally appears in the description, URL, or metadata. Otherwise discard the suggestion.
 
 Respond ONLY with valid JSON, no markdown, no explanation:
 {"suggested_lists":[{"id":<number>,"name":"<string>","reason":"<short>"}],"suggested_tags":["<tag>"]}`;
