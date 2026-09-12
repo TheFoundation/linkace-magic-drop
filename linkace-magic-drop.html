@@ -48,6 +48,7 @@
   "tab_meta": "Meta",
   "tab_fav": "Favicons",
   "tab_arch": "Archive",
+  "tab_git": "Git",
   "tab_bak": "Backup",
   "tab_la_lists": "Listen",
   "tab_la_tags": "Tags",
@@ -72,6 +73,14 @@
   "psec_custom_favicon_proxies": "Custom Favicon Proxies",
   "psec_fallback_order": "Fallback Order",
   "psec_archive_urls": "Archive URLs",
+  "psec_git_providers": "Git Provider Instances",
+  "info_git_providers": "github.com and gitlab.com are recognized automatically. Add self-hosted GitLab/Gitea/Codeberg-style instances here — links from these hosts get auto-tagged (provider-username) and get an auto-created list (project name).",
+  "info_git_providers_example": "Example: https://codeberg.org → provider tag prefix codeberg-org",
+  "psec_nim_cache": "NIM Cache",
+  "info_nim_cache": "NIM responses are cached per model+link for 1 hour to avoid duplicate requests.",
+  "btn_clear_nim_cache": "✕ Clear NIM cache",
+  "toast_nim_cache_cleared": "NIM cache entries cleared",
+  "btn_add": "+ Add",
   "psec_export": "Export",
   "psec_import": "Import",
   "psec_danger_zone": "Danger Zone",
@@ -176,6 +185,7 @@
   "tab_meta": "Meta",
   "tab_fav": "Favicons",
   "tab_arch": "Archiv",
+  "tab_git": "Git",
   "tab_bak": "Backup",
   "settings_btn": "EINSTELLUNGEN",
   "psec_nim_api_key__model": "NIM API Key & Modell",
@@ -188,6 +198,14 @@
   "psec_custom_favicon_proxies": "Custom Favicon-Proxys",
   "psec_fallback_order": "Fallback-Reihenfolge",
   "psec_archive_urls": "Archiv-URLs",
+  "psec_git_providers": "Git-Provider-Instanzen",
+  "info_git_providers": "github.com und gitlab.com werden automatisch erkannt. Hier selbst gehostete GitLab/Gitea/Codeberg-Instanzen hinzufügen — Links von diesen Hosts werden automatisch getaggt (Provider-Nutzername) und bekommen eine automatisch angelegte Liste (Projektname).",
+  "info_git_providers_example": "Beispiel: https://codeberg.org → Tag-Präfix codeberg-org",
+  "psec_nim_cache": "NIM Cache",
+  "info_nim_cache": "NIM-Antworten werden pro Modell+Link eine Stunde lang zwischengespeichert, um doppelte Anfragen zu vermeiden.",
+  "btn_clear_nim_cache": "✕ NIM Cache leeren",
+  "toast_nim_cache_cleared": "NIM-Cache-Einträge gelöscht",
+  "btn_add": "+ Hinzufügen",
   "psec_export": "Export",
   "psec_import": "Import",
   "psec_danger_zone": "Gefahrenzone",
@@ -458,6 +476,7 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
 .nim-log-code{flex-shrink:0;font-weight:700;min-width:28px}
 .nim-log-code.nim-log-ok{color:var(--cyan)}
 .nim-log-code.nim-log-err{color:var(--red)}
+.nim-log-code.nim-log-cache{color:var(--pink)}
 .nim-log-model{color:#c4b5fd;flex-shrink:0;max-width:180px;overflow:hidden;text-overflow:ellipsis}
 .nim-log-dur{color:var(--amber);flex-shrink:0}
 .nim-log-url{color:var(--text2);overflow:hidden;text-overflow:ellipsis}
@@ -585,6 +604,7 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
     <button class="p-tab" data-tab="meta" onclick="switchTab('meta')" data-i18n="tab_meta">Meta</button>
     <button class="p-tab" data-tab="fav" onclick="switchTab('fav')" data-i18n="tab_fav">Favicons</button>
     <button class="p-tab" data-tab="arch" onclick="switchTab('arch')" data-i18n="tab_arch">Archive</button>
+    <button class="p-tab" data-tab="git" onclick="switchTab('git')" data-i18n="tab_git">Git</button>
     <button class="p-tab" data-tab="bak" onclick="switchTab('bak')" data-i18n="tab_bak">Backup</button>
     <button class="p-tab" data-tab="bookmarklet" onclick="switchTab('bookmarklet')">🔖 Bookmarklet</button>
   </div>
@@ -658,6 +678,10 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
         <div class="preview-box" id="nim-url-preview">–</div>
       </div>
       <button class="btn-t" onclick="testNIM()"><span data-i18n="btn_test_nim">▶ Test NIM connection</span></button>
+
+      <div class="psec" style="margin-top:22px" data-i18n="psec_nim_cache">NIM Cache</div>
+      <div class="info-txt" style="margin-bottom:8px" data-i18n="info_nim_cache">NIM responses are cached per model+link for 1 hour to avoid duplicate requests.</div>
+      <button class="btn-t" onclick="clearNimCache()"><span data-i18n="btn_clear_nim_cache">✕ Clear NIM cache</span></button>
 
       <div class="psec" style="margin-top:22px">NSFW-Modus</div>
       <div class="fg" style="display:flex;align-items:center;gap:9px">
@@ -791,6 +815,18 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
         <code style="color:var(--cyan)">reddit.com</code> → https://archive.ph<br>
         <code style="color:var(--cyan)">medium.com</code> → https://12ft.io
       </div>
+    </div>
+
+    <!-- GIT PROVIDERS -->
+    <div class="p-pane" id="pane-git">
+      <div class="psec" data-i18n="psec_git_providers">Git Provider Instances</div>
+      <div class="info-txt" style="margin-bottom:12px" data-i18n="info_git_providers">github.com and gitlab.com are recognized automatically. Add self-hosted GitLab/Gitea/Codeberg-style instances here — links from these hosts get auto-tagged (provider-username) and get an auto-created list (project name).</div>
+      <div id="git-rows"></div>
+      <div class="create-list-row">
+        <input class="fi" id="git-provider-new" type="url" placeholder="https://codeberg.org" style="flex:1" onkeydown="if(event.key==='Enter')addGitProvider()">
+        <button class="btn-add" onclick="addGitProvider()"><span data-i18n="btn_add">+ Add</span></button>
+      </div>
+      <div class="info-txt" style="margin-top:12px" data-i18n="info_git_providers_example">Example: <code style="color:var(--cyan)">https://codeberg.org</code> → provider tag prefix <code style="color:var(--pink)">codeberg-org</code></div>
     </div>
 
     <!-- BACKUP -->
@@ -1052,6 +1088,7 @@ function getCfg() {
     scrapers: LS.getJ('scrapers', []),
     favProxies: LS.getJ('fav_proxies', []),
     archiveRules: LS.getJ('archive_rules', [{ domain: '*', url: 'https://archive.is' }]),
+    gitProviders: LS.getJ('git_providers', ['https://codeberg.org']),
     nsfwMode: LS.get('nsfw_mode')==='1',
     translationUrl: LS.get('translation_url')||'',
     lang: LS.get('lang')||'EN',
@@ -1122,6 +1159,7 @@ function loadCfgToPanel() {
   renderScrapers();
   renderFavProxies();
   renderArchRows();
+  renderGitRows();
   renderLALists();
   updateNSFWBadge();
 }
@@ -1695,8 +1733,53 @@ function renderLALists() {
 }
 
 // ╔══════════════════════════════════════════════════╗
+// ║  NIM RESPONSE CACHE (localStorage, 1h TTL)        ║
+// ╚══════════════════════════════════════════════════╝
+const NIM_CACHE_PREFIX = 'nimcache:';
+const NIM_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+async function sha256Hex(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function getNimCacheKey(model, url) {
+  const sha = await sha256Hex(url);
+  return `${NIM_CACHE_PREFIX}${model}-${sha}`;
+}
+
+function readNimCache(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed.ts || (Date.now() - parsed.ts) > NIM_CACHE_TTL_MS) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    return parsed.data;
+  } catch { return null; }
+}
+
+function writeNimCache(key, data) {
+  try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); }
+  catch (e) { console.warn('NIM cache write failed', e); }
+}
+
+function clearNimCache() {
+  const keys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith(NIM_CACHE_PREFIX)) keys.push(k);
+  }
+  keys.forEach(k => localStorage.removeItem(k));
+  toast(`${keys.length} ${t('toast_nim_cache_cleared')}`, 'i', 2500);
+}
+
+// ╔══════════════════════════════════════════════════╗
 // ║  NIM API + QUEUE                                 ║
 // ╚══════════════════════════════════════════════════╝
+
 async function testNIM() {
   saveCfg();
   const c = getCfg();
@@ -1844,7 +1927,20 @@ async function runNIMForCard(cardId) {
   const startTime = performance.now();
   let httpCode = null;
   const modelUsed = getModel();
+  let fromCache = false;
+  const cacheKey = await getNimCacheKey(modelUsed, card.url);
+  const cachedResult = readNimCache(cacheKey);
 
+  if (cachedResult) {
+    fromCache = true;
+    card.aiSuggestion = cachedResult;
+    if (!card.manuallyEdited) {
+      cachedResult.suggested_lists?.forEach(l => card.selectedLists.add(l.id));
+      cachedResult.suggested_tags?.forEach(t => card.selectedTags.add(t));
+    }
+    card.nimSuccess = true;
+    dot.className = 'ind-dot ok';
+  } else {
   try {
     const langs = card.meta?.langs?.join(', ') || '';
 
@@ -1917,6 +2013,7 @@ Respond ONLY with valid JSON, no markdown, no explanation:
       }
       card.nimSuccess = true;
       dot.className = 'ind-dot ok';
+      writeNimCache(cacheKey, parsed);
     }
   } catch(e) {
     card.nimError = e.message;
@@ -1926,11 +2023,12 @@ Respond ONLY with valid JSON, no markdown, no explanation:
       httpCode = m ? parseInt(m[1]) : 'ERR';
     }
   }
+  }
 
   const durationSec = ((performance.now() - startTime) / 1000).toFixed(2);
   logNIMResult({
     timestamp: new Date(),
-    httpCode: httpCode == null ? 200 : httpCode,
+    httpCode: fromCache ? 'CACHE' : (httpCode == null ? 200 : httpCode),
     model: modelUsed,
     duration: durationSec,
     url: card.url
@@ -1955,7 +2053,7 @@ function renderNimLog() {
   el.style.display = 'block';
   el.innerHTML = S.nimLog.map(e => {
     const ts = e.timestamp.toLocaleTimeString();
-    const codeClass = (e.httpCode === 200) ? 'nim-log-ok' : 'nim-log-err';
+    const codeClass = e.httpCode === 'CACHE' ? 'nim-log-cache' : (e.httpCode === 200 ? 'nim-log-ok' : 'nim-log-err');
     return `<div class="nim-log-line"><span class="nim-log-ts">${ts}</span><span class="nim-log-code ${codeClass}">${escH(String(e.httpCode))}</span><span class="nim-log-model">${escH(e.model||'—')}</span><span class="nim-log-dur">${e.duration}s</span><span class="nim-log-url" title="${escH(e.url)}">${escH(e.url)}</span></div>`;
   }).join('');
 }
@@ -1979,6 +2077,9 @@ function createCard(url) {
   S.cards.set(id, card);
   renderCard(id);
   updateSaveBar();
+  // Git provider (github/gitlab/custom instance) auto-tag + auto-list — deterministic,
+  // runs regardless of existing-link/NIM status, so it also applies on updates.
+  applyGitProviderMeta(card);
   // Start meta fetch
   fetchMeta(url).then(meta => {
     // If card was pre-seeded by bookmarklet, only upgrade (don't downgrade)
@@ -2566,6 +2667,98 @@ function getArchiveUrl(domain) {
   const global = rules.find(r => r.domain==='*' && r.url);
   if (global) return global.url;
   return null;
+}
+
+// ── Git provider instances (self-hosted GitLab/Gitea/Codeberg-style) ──
+function renderGitRows() {
+  const c = getCfg();
+  const el = $('git-rows');
+  if (!el) return;
+  const rows = c.gitProviders || [];
+  if (!rows.length) {
+    el.innerHTML = `<div style="font-size:11px;color:var(--text3);text-align:center;padding:10px">Keine Instanzen</div>`;
+    return;
+  }
+  el.innerHTML = rows.map((url, i) => `
+    <div class="arch-row">
+      <input class="fi" type="url" value="${escH(url)}" placeholder="https://gitea.example.com" style="flex:1"
+        onchange="updateGitProvider(${i},this.value)" onblur="updateGitProvider(${i},this.value)">
+      <button class="chip-x" onclick="removeGitProvider(${i})" style="font-size:16px;color:var(--red);padding:0 4px">×</button>
+    </div>`).join('');
+}
+function addGitProvider() {
+  const v = $v('git-provider-new');
+  if (!v || !v.startsWith('http')) { toast('Gültige URL eingeben','w'); return; }
+  const c = getCfg();
+  const list = c.gitProviders || [];
+  list.push(v.replace(/\/$/,''));
+  LS.set('git_providers', list);
+  $sv('git-provider-new','');
+  renderGitRows();
+}
+function removeGitProvider(i) { const c=getCfg(); c.gitProviders.splice(i,1); LS.set('git_providers',c.gitProviders); renderGitRows(); }
+function updateGitProvider(i, v) { const c=getCfg(); c.gitProviders[i]=v.replace(/\/$/,''); LS.set('git_providers',c.gitProviders); renderGitRows(); }
+
+// Detects github.com/gitlab.com or a configured custom Git-provider host in a URL
+// and extracts {providerName, username, projectName, tag}.
+function parseGitProviderUrl(url) {
+  let u;
+  try { u = new URL(url); } catch { return null; }
+  const host = u.hostname.toLowerCase();
+  let providerName = null;
+
+  if (host === 'github.com') providerName = 'github';
+  else if (host === 'gitlab.com') providerName = 'gitlab';
+  else {
+    const customHosts = (getCfg().gitProviders || []).map(p => {
+      try { return new URL(p).hostname.toLowerCase(); } catch { return p.toLowerCase(); }
+    });
+    if (customHosts.includes(host)) {
+      // Swap the LAST dot for a dash so the name is tag/link-safe (e.g. codeberg.org → codeberg-org)
+      providerName = host.replace(/\.([^.]+)$/, '-$1');
+    }
+  }
+  if (!providerName) return null;
+
+  const parts = u.pathname.split('/').filter(Boolean);
+  const username = parts[0];
+  const projectName = parts[1];
+  if (!username || !projectName) return null;
+
+  return { providerName, username, projectName, tag: `${providerName}-${username}` };
+}
+
+// Ensures a LinkAce list with this name exists (creates it via API if needed) and returns its id.
+async function ensureListId(name) {
+  const existing = S.lists.find(l => l.name.toLowerCase() === name.toLowerCase());
+  if (existing) return existing.id;
+  try {
+    const c = getCfg();
+    const isV2 = (c.laApiVersion || 'v1') === 'v2';
+    const payload = { name, description: '' };
+    if (isV2) payload.visibility = 1; else payload.is_private = false;
+    const res = await laReq('/lists', 'POST', payload);
+    const newList = res.data || res;
+    S.lists.push(newList);
+    renderLALists();
+    return newList.id;
+  } catch(e) {
+    console.error('Could not auto-create list', name, e);
+    return null;
+  }
+}
+
+// Applies the Git-provider tag ("$provider-$username") and auto-created project
+// list to a card, for github.com/gitlab.com and any configured custom instance.
+// Runs for every card regardless of NIM/existing-link status — deterministic,
+// derived purely from the URL — including on update of already-existing links.
+async function applyGitProviderMeta(card) {
+  const info = parseGitProviderUrl(card.url);
+  if (!info) return;
+  card.selectedTags.add(info.tag);
+  const listId = await ensureListId(info.projectName);
+  if (listId != null) card.selectedLists.add(listId);
+  renderCard(card.id);
 }
 
 // ╔══════════════════════════════════════════════════╗
